@@ -103,7 +103,7 @@ You need: a Mac, [LM Studio](https://lmstudio.ai) with a model that supports too
 as Gemma 4 26B works), Python 3.9+, and an SSH alias for the server you want to assess.
 
 ```
-git clone https://github.com/dshannon46-jpg/Automated_Compliance.git
+git clone https://github.com/The-CyberHygiene-Project/Automated_Compliance.git
 cd Automated_Compliance
 pip3 install pytest && python3 -m pytest -q tests   # the tests need no model and no server
 reference/fetch_nist_data.sh                     # NIST's public data files
