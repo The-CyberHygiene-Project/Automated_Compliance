@@ -62,6 +62,7 @@ unmet ones become a to-do list for the organization.
 | `objectives.md`, `kit-r3/` | The objective lists (NIST data, generated mechanically) |
 | `objectives.lettered-only-297.md` | An earlier Rev 2 list that lacked the 23 single-objective requirements; kept for comparison |
 | `reference/` | Kit generator, spreadsheet reader, and `fetch_nist_data.sh` for NIST's files |
+| `aibom/` | **AI Bill of Materials** for the reference run: model, file hashes, settings, prompts, software, data (`AIBOM.md`, CycloneDX `aibom.cdx.json`) and `make_aibom.py` to generate your own |
 | `tests/` | Automated tests; none of them touch a model or a server |
 
 ## The measurement register (a spreadsheet you can use without any of the code)
@@ -79,6 +80,22 @@ data for SP 800-171 Rev 3 and SP 800-171A Rev 3 (catalog version 1.1.0). It is n
 Dropdowns and colors are built in (green Met, red Not Met, grey N/A, yellow still waiting). Its Rev 2 ID
 column is empty on purpose: `key_r3.py` and `fill_register.py` can fill it from NIST's Rev 2 to Rev 3 mapping,
 and can write an AI scan's results into a copy. Always work on a copy; never put real findings in the template.
+
+## AI Bill of Materials
+
+`aibom/AIBOM.md` records exactly what produced the reference results, so others can reproduce or question them:
+the model (name, quantization, where the files came from, a SHA-256 for every file), the settings (temperature,
+context, step and memory limits), a fingerprint of the instructions the model receives, the software and
+hardware, and the data it was given. `aibom/aibom.cdx.json` is the same in CycloneDX 1.6 for tools that read it.
+It covers the Gemma 4 26B run; an early trial with another model is not part of it.
+
+Making one for your own setup:
+
+```
+python3 aibom/make_aibom.py --model-key <LM Studio model id> --model-dir <folder with the model files> --source <where you got them>
+```
+
+It records no folder paths, serial numbers or host names.
 
 ## Quick start (macOS)
 
