@@ -1,0 +1,38 @@
+#!/usr/bin/env python3
+"""Search the document library (run 2 only). Read-only: it calls the library's search tool and nothing else.
+Usage: ./library 'audit log retention'        ./library --id 'POL-001'"""
+import json
+import sys
+import urllib.request
+
+URL = "http://127.0.0.1:8767/mcp"
+HDR = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream"}
+
+
+def post(body, sid=None):
+    h = dict(HDR, **({"Mcp-Session-Id": sid} if sid else {}))
+    req = urllib.request.Request(URL, json.dumps(body).encode(), h)
+    with urllib.request.urlopen(req, timeout=60) as r:
+        raw, sid = r.read().decode(), r.headers.get("Mcp-Session-Id", sid)
+    data = [ln[5:].strip() for ln in raw.splitlines() if ln.startswith("data:")] or [raw]
+    return (json.loads(data[-1]) if data[-1].strip() else {}), sid
+
+
+def main(argv):
+    if len(argv) < 2 or argv[1] in ("-h", "--help"):
+        print(__doc__); return 2
+    tool, arg = ("search_identifiers", {"identifier": argv[2]}) if argv[1] == "--id" else \
+                ("search_documents", {"query": " ".join(argv[1:])})
+    _, sid = post({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {
+        "protocolVersion": "2025-03-26", "capabilities": {}, "clientInfo": {"name": "aitest", "version": "1"}}})
+    post({"jsonrpc": "2.0", "method": "notifications/initialized"}, sid)
+    res, _ = post({"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": tool, "arguments": arg}}, sid)
+    if "error" in res:
+        print("library error:", res["error"].get("message")); return 1
+    for c in res.get("result", {}).get("content", []):
+        print(c.get("text", ""))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

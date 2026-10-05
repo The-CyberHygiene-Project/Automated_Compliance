@@ -1,0 +1,12 @@
+(version 1)
+(allow default)
+; Network: LM Studio on this machine (port 1234) and Unix sockets (the one SSH connection to the target) only.
+(deny network-outbound)
+(allow network-outbound (remote ip "localhost:1234"))
+(allow network-outbound (remote unix-socket))
+; Answer keys and anything derived from them stay unreadable to the AI, and so do notes, other users' folders and
+; other volumes. assess.sh replaces __HOME__ with your home folder.
+(deny file-read* (subpath "__HOME__/compliance-private"))
+(deny file-read* (subpath "__HOME__/Desktop"))
+(deny file-read* (subpath "__HOME__/Documents"))
+(deny file-read* (subpath "/Volumes"))

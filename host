@@ -1,0 +1,4 @@
+#!/bin/bash
+# The AI's only way to the server: one command over the SSH connection assess.sh opened. Inside the sandbox nothing
+# else on the network is reachable (only localhost and Unix sockets), so this socket is the single path.
+exec ssh -S "$(cd "$(dirname "$0")" && pwd)/.target.sock" -o ControlMaster=no -o BatchMode=yes "${TARGET:?}" "$@"
