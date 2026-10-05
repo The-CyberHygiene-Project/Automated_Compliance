@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "reference"))
 import fill_register as fr  # noqa: E402
 import read_xlsx  # noqa: E402
 
-REGISTER = Path(os.environ.get("R3_REGISTER", str(Path.home() / "NIST_800-171r3_Measurement_Register.xlsx")))
+REGISTER = Path(os.environ.get("R3_REGISTER", str(Path(__file__).resolve().parents[1] / "templates" / "NIST_800-171r3_Measurement_Register.xlsx")))
 
 
 def test_set_cell_fills_empty_typed_and_missing_cells_and_escapes():

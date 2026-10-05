@@ -57,11 +57,28 @@ unmet ones become a to-do list for the organization.
 | `assess.sh`, `host`, `sandbox.sb` | The launcher, the AI's single path to the server, the sandbox profile |
 | `grade.py`, `grade_r3.py` | Graders for Rev 2 and Rev 3 |
 | `key_r3.py` | Builds the provisional Rev 3 key from your Rev 2 results and NIST's mapping |
-| `fill_register.py` | Writes results into a copy of a Rev 3 measurement register spreadsheet |
+| `fill_register.py` | Writes results into a copy of the Rev 3 measurement register (below) |
+| `templates/NIST_800-171r3_Measurement_Register.xlsx` | **A blank Rev 3 measurement register** (see below) |
 | `objectives.md`, `kit-r3/` | The objective lists (NIST data, generated mechanically) |
 | `objectives.lettered-only-297.md` | An earlier Rev 2 list that lacked the 23 single-objective requirements; kept for comparison |
 | `reference/` | Kit generator, spreadsheet reader, and `fetch_nist_data.sh` for NIST's files |
 | `tests/` | Automated tests; none of them touch a model or a server |
+
+## The measurement register (a spreadsheet you can use without any of the code)
+
+`templates/NIST_800-171r3_Measurement_Register.xlsx` is a blank, generic workbook built from NIST's OSCAL
+data for SP 800-171 Rev 3 and SP 800-171A Rev 3 (catalog version 1.1.0). It is not applied to any organization.
+
+| Sheet | What it holds |
+|---|---|
+| Requirements | The 97 requirements, with owner, implementation status, evidence location and notes to fill in |
+| **ODPs** | The 88 organization-defined parameters (time periods, frequencies, lists). **Define these first**: many objectives cannot be judged until their parameter is |
+| Objectives | The 422 assessment objectives: result (Met / Not Met / N/A), method, evidence, assessor, date |
+| Methods, Withdrawn, Summary | NIST's suggested methods, the 33 withdrawn numbers and where they went, and live totals by family |
+
+Dropdowns and colors are built in (green Met, red Not Met, grey N/A, yellow still waiting). Its Rev 2 ID
+column is empty on purpose: `key_r3.py` and `fill_register.py` can fill it from NIST's Rev 2 to Rev 3 mapping,
+and can write an AI scan's results into a copy. Always work on a copy; never put real findings in the template.
 
 ## Quick start (macOS)
 

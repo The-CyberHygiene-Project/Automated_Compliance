@@ -23,7 +23,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE / "reference"))
 import read_xlsx  # noqa: E402
 
-DEFAULT_REGISTER = Path(os.environ.get("R3_REGISTER", str(Path.home() / "NIST_800-171r3_Measurement_Register.xlsx")))
+DEFAULT_REGISTER = Path(os.environ.get("R3_REGISTER", str(HERE / "templates" / "NIST_800-171r3_Measurement_Register.xlsx")))
 DEFAULT_OUT = Path.home() / "NIST_800-171r3_Measurement_Register_filled.xlsx"
 KEY_PATH = Path(os.environ.get("R3_KEY_DIR", str(Path.home() / "compliance-private" / "r3-key"))) / "answer-key-r3.json"
 
