@@ -67,3 +67,21 @@ no document states a value.
 The sandbox profile denies the AI read access to the key folder, notes, `~/Desktop`, `~/Documents` and other
 volumes, and limits the network to the local model server and the one SSH socket. The documents it assesses
 are a copy that leaves out the self-assessment.
+
+## The optional document library (run 2)
+
+Run 2 lets the AI search a local library of reference material (standards, guides, older documents) in addition to
+the organization's own documents. It is optional, and the assessor works with any local search service that
+answers the same simple request (`library.run2` shows the one used here, a read-only search server on
+`localhost:8767`).
+
+One design rule matters more than the tool: **the AI can search the library but can never add to it.** Documents
+enter the library only through a person, using a separate manager that the AI cannot reach (the sandbox blocks
+its port). That keeps the AI's reference material from being changed by the thing being tested, and a planted
+instruction in a document cannot add more documents.
+
+The library this was built and tested against (the reference Rev 3 run did not use it; a run with it is still to do) is the open-source document library in the
+[`diwai-rag`](https://github.com/The-CyberHygiene-Project/diwai/tree/main/Code/diwai-rag) code (a redacted public
+copy). Its [`ingest.py`](https://github.com/The-CyberHygiene-Project/diwai/blob/main/Code/diwai-rag/ingest.py) adds
+documents and its [`mcp_server.py`](https://github.com/The-CyberHygiene-Project/diwai/blob/main/Code/diwai-rag/mcp_server.py)
+is the read-only search side. It is a separate project with its own history, so it is linked here, not copied.
