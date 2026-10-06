@@ -217,6 +217,46 @@ voluntary sharing of anonymous counts (size band, agency group, prime or subcont
 system, so there is no production user base to count. They matter for
 larger organizations and are left for a later version if the community asks.
 
+## Future work: contracts are more than contracts
+
+Not built, and not planned for the first version. It matters enough to record now. The profile's `[contract.N]` section
+assumes something simple: an agreement with a number and some clauses. Real business is messier. A later version that
+**prefills the contract list by searching a folder of the company's own documents** (for example a shared folder in a
+private cloud) would have to cope with all of it.
+
+**"Contract" covers many instruments**
+
+- Formal Government contracts, with numbers such as 123456-12-D-1234, with or without an alphabetic prefix (AF, FA, DA and
+  others).
+- Subcontracts, many of which do not name the prime contract they support.
+- Purchase orders and other ordering instruments.
+- Consulting agreements.
+
+**The obligation can sit in different places**
+
+- A flow-down clause, for example FAR 52.204-21 or DFARS 252.204-7008, -7012, -7019 or -7021.
+- A separate non-disclosure agreement, with no clause at all.
+
+**What has to be protected is not one thing**
+
+- Controlled Unclassified Information (CUI) is a broad definition with many sub-categories, and it may carry specific
+  dissemination controls.
+- Export controls such as ITAR or EAR may apply on top of it.
+
+**What this means for the design**
+
+- A prefill can only **propose**. Each proposal would carry a confidence level and the document it came from, and the owner
+  confirms it, as with the capability-statement seeding. Nothing is accepted silently.
+- Contract documents are sensitive. The search would run on the owner's own machine, results would go only into the private
+  profile, and the AI would see nothing beyond what the profile already allows.
+- The `[contract.N]` section would probably need more fields: the kind of instrument; the reference (which may be absent);
+  whether the prime is known; where the duty comes from (clauses, an agreement, or something else); the CUI categories and
+  dissemination controls; and export-control status (ITAR, EAR, none, unknown).
+- The rule that the contract decides the revision still holds, but a short flow-down clause or a non-disclosure agreement
+  may not state a revision at all. That is the `unspecified` / `assumed` case already in this design.
+- This is a complex topic, and the first version would get parts of it wrong. The people who use it will see more cases than
+  one author can.
+
 ## Open questions
 
 1. Which capability-statement formats should the seeding step read first? Word, Markdown and plain text need no extra software; PDF would need a reader.
