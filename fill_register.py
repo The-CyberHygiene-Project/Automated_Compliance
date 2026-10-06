@@ -215,6 +215,89 @@ def _apply(src, out, writes, notes):
     z.close()
 
 
+# ---------------------------------------------------------------- the Summary sheet's stored values
+# Each formula cell on Summary keeps a stored answer. A spreadsheet app may show that stored answer without
+# recalculating (ONLYOFFICE did), so a filled register must carry the right answers itself.
+_STATUS_COL = {"D": "Met", "E": "Not Met", "F": "N/A", "G": "Not assessed"}
+
+
+def _summary_formula_ok(col, formula, status=None, total=False):
+    """True when a Summary formula is the one this tool knows how to compute. Anything else keeps its stored value."""
+    f = re.sub(r'\s+(?=(?:[^"]*"[^"]*")*[^"]*$)', "", formula.replace("&quot;", '"'))   # spaces outside quotes only
+    if total:
+        if col in "BCDEFGIJ":
+            return bool(re.fullmatch(rf"SUM\({col}\d+:{col}\d+\)", f))
+        return bool(re.fullmatch(r"IF\(C\d+=0,0,\(D\d+\+E\d+\+F\d+\)/C\d+\)", f) if col == "H" else re.fullmatch(r"IF\(I\d+=0,0,J\d+/I\d+\)", f))
+    pats = {"B": r"COUNTIF\(Requirements!\$A\$2:\$A\$\d+,A\d+\)", "C": r"COUNTIF\(Objectives!\$B\$2:\$B\$\d+,A\d+\)",
+            "H": r"IF\(C\d+=0,0,\(D\d+\+E\d+\+F\d+\)/C\d+\)", "I": r"COUNTIF\(ODPs!\$B\$2:\$B\$\d+,A\d+\)",
+            "J": r'COUNTIFS\(ODPs!\$B\$2:\$B\$\d+,A\d+,ODPs!\$M\$2:\$M\$\d+,"Defined"\)', "K": r'IF\(I\d+=0,"none",J\d+/I\d+\)'}
+    if col in _STATUS_COL:
+        if status is not None and status != _STATUS_COL[col]:
+            return False
+        return bool(re.fullmatch(rf'COUNTIFS\(Objectives!\$B\$2:\$B\$\d+,A\d+,Objectives!\$H\$2:\$H\$\d+,"{re.escape(_STATUS_COL[col])}"\)', f))
+    return bool(col in pats and re.fullmatch(pats[col], f))
+
+
+def _set_cached(xml, ref, value):
+    pat = re.compile(r'<c r="' + ref + r'"((?:\s+[A-Za-z:]+="[^"]*")*)>(<f[^>]*>.*?</f>)(?:<v>.*?</v>)?</c>', re.S)
+    m = pat.search(xml)
+    if not m:
+        return xml
+    attrs = re.sub(r'\s+t="[^"]*"', "", m.group(1))
+    kind, text = ("str", value) if isinstance(value, str) else ("n", repr(round(value, 12)) if isinstance(value, float) else str(value))
+    return xml[:m.start()] + f'<c r="{ref}"{attrs} t="{kind}">{m.group(2)}<v>{escape(text)}</v></c>' + xml[m.end():]
+
+
+def _refresh_summary(path):
+    z = zipfile.ZipFile(path)
+    names, items = _sheets(z), list(z.infolist())
+    parts = {i.filename: z.read(i.filename) for i in items}
+    z.close()
+    book = _Book(path)
+    req, obj, odp = (book.data[s][1:] for s in ("Requirements", "Objectives", "ODPs"))
+    cell = lambda r, c: r[c] if len(r) > c else ""  # noqa: E731
+    xml = parts[names["Summary"]].decode()
+    nums = _rownums(xml)
+    names_col = {n: book.value("Summary", f"A{n}") for n in nums}
+    head = next((n for n in nums if names_col[n] == "Family"), None)
+    total = next((n for n in nums if names_col[n] == "Total"), None)
+    if head is None or total is None:
+        return 0
+    fam = [n for n in nums if head < n < total and names_col[n]]
+    def formula(ref):
+        m = re.search(r'<c r="' + ref + r'"[^>]*>\s*<f[^>]*>(.*?)</f>', xml, re.S)
+        return m.group(1) if m else ""
+    vals, patched = {}, 0
+    for n in fam:
+        f = names_col[n]
+        o = [r for r in obj if cell(r, 1) == f]
+        d = [r for r in odp if cell(r, 1) == f]
+        row = {"B": sum(1 for r in req if cell(r, 0) == f), "C": len(o)}
+        for c, s in _STATUS_COL.items():
+            row[c] = sum(1 for r in o if cell(r, 7) == s)
+        row["H"] = (row["D"] + row["E"] + row["F"]) / row["C"] if row["C"] else 0
+        row["I"] = len(d)
+        row["J"] = sum(1 for r in d if cell(r, 12) == "Defined")
+        row["K"] = "none" if row["I"] == 0 else row["J"] / row["I"]
+        vals[n] = row
+        for c, v in row.items():
+            if _summary_formula_ok(c, formula(f"{c}{n}"), _STATUS_COL.get(c)):
+                xml, patched = _set_cached(xml, f"{c}{n}", v), patched + 1
+    tot = {c: sum(vals[n][c] for n in fam) for c in "BCDEFGIJ"}
+    tot["H"] = (tot["D"] + tot["E"] + tot["F"]) / tot["C"] if tot["C"] else 0
+    tot["K"] = tot["J"] / tot["I"] if tot["I"] else 0
+    for c, v in tot.items():
+        if _summary_formula_ok(c, formula(f"{c}{total}"), total=True):
+            xml, patched = _set_cached(xml, f"{c}{total}", v), patched + 1
+    parts[names["Summary"]] = xml.encode()
+    tmp = Path(str(path) + ".tmp")
+    with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zout:
+        for i in items:
+            zout.writestr(i, parts[i.filename])
+    tmp.replace(path)
+    return patched
+
+
 def _record_path(path):
     return Path(str(path) + ".aimeta.json")
 
@@ -236,6 +319,7 @@ def fill(register, out, key, results_dir, date, force=False):
     book = _Book(register)
     writes = plan(book, key, results, model, date)
     _apply(register, out, writes, _fill_notes(model, date))
+    _refresh_summary(out)
     _record_path(out).write_text(json.dumps({f"{s}!{r}": t for s, r, t, _ in writes}, indent=0))
     return len(results)
 
@@ -276,6 +360,7 @@ def merge(existing, out, key, results_dir, date):
     todo = [w for w in writes if (w[0], w[3]) not in keep]
     notes = ["", f"MERGED {date}: the AI cells were refreshed from a new scan ({model}); rows you had edited were kept as they were."]
     _apply(existing, out, todo, notes)
+    _refresh_summary(out)
     record.update({f"{s}!{r}": t for s, r, t, _ in todo})
     _record_path(out).write_text(json.dumps(record, indent=0))
     return {"written": len(todo), "kept": kept, "rows_refreshed": len({(w[0], w[3]) for w in todo})}

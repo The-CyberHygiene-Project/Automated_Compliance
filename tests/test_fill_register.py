@@ -188,3 +188,48 @@ class TestMerge:
         full = json.loads(rec.read_text())
         rec.unlink()
         assert fr.adopt(first, self.KEY, res, "2026-10-05") == len(full)
+
+
+# ------------------------------------------------------------------ the Summary sheet must roll up without an app recalculating
+def _summary(path):
+    rows = read_xlsx.read(path)["Summary"]
+    head = next(i for i, r in enumerate(rows) if r and r[0] == "Family")
+    names = rows[head]
+    return {r[0]: dict(zip(names[1:], r[1:])) for r in rows[head + 1:] if r and r[0]}
+
+
+@pytest.mark.skipif(not REGISTER.exists(), reason="set R3_REGISTER to a Rev 3 measurement register to run this")
+class TestSummary:
+    KEY = TestMerge.KEY
+
+    def _filled(self, tmp_path):
+        res = _results(tmp_path / "r", [_row("A.03.01.01.a.01", "Met"), _row("A.03.01.01.a.02", "Unmet"), _row("A.03.01.01.b.01", "N/A"),
+                                        _row("A.03.01.01.b.02", "Not checkable", "none"),
+                                        _row("A.03.01.01.ODP.01", "Met", "document", "SSP states 90 days")])
+        out = tmp_path / "filled.xlsx"
+        fr.fill(REGISTER, out, self.KEY, res, "2026-10-06")
+        return out, res
+
+    def test_family_and_total_rows_count_the_filled_results(self, tmp_path):
+        out, _ = self._filled(tmp_path)
+        s = _summary(out)
+        ac = s["Access Control"]
+        assert (ac["Met"], ac["Not Met"], ac["N/A"], ac["Not assessed"], ac["Objectives"]) == ("1", "1", "1", "71", "74")
+        assert ac["% assessed"].startswith("0.04")                       # 3 of 74 judged
+        assert ac["ODPs defined"] == "0"                                  # "Needs review" is not "Defined"
+        t = s["Total"]
+        assert (t["Met"], t["Not Met"], t["N/A"], t["Objectives"]) == ("1", "1", "1", "422")
+
+    def test_an_owner_defined_parameter_counts_after_a_merge(self, tmp_path):
+        out, res = self._filled(tmp_path)
+        om = fr._rowof(out, "ODPs", 0, "A.03.01.01.ODP[01]")
+        _edit(out, "ODPs", f"M{om}", "Defined")
+        merged = tmp_path / "merged.xlsx"
+        fr.merge(out, merged, self.KEY, res, "2026-10-07")
+        s = _summary(merged)
+        assert s["Access Control"]["ODPs defined"] == "1" and s["Total"]["ODPs defined"] == "1"
+        assert s["Maintenance"]["% ODPs defined"] == "none"               # a family with no parameters
+
+    def test_a_formula_the_tool_does_not_recognise_keeps_its_stored_value(self):
+        assert fr._summary_formula_ok("D", 'COUNTIFS(Objectives!$B$2:$B$423,A5,Objectives!$H$2:$H$423,"Met")', "Met")
+        assert not fr._summary_formula_ok("D", "COUNTIF(Objectives!$B$2:$B$423,A5)+1", "Met")
