@@ -89,3 +89,102 @@ def test_the_default_output_name_carries_the_date_so_runs_never_collide():
 def test_a_missing_rev2_key_skips_the_prefill_instead_of_failing(tmp_path, monkeypatch):
     monkeypatch.setattr(fr, "KEY_PATH", tmp_path / "absent.json")
     assert fr.load_key() == []
+
+
+# ------------------------------------------------------------------ merge: new scan results into a working register
+def _results(dirpath, rows, model="m"):
+    dirpath.mkdir(parents=True, exist_ok=True)
+    (dirpath / "03.01.01.json").write_text(json.dumps({"requirement": "03.01.01", "model": model, "results": rows}))
+    return dirpath
+
+
+def _row(oid, status, source="both", evidence="evidence text"):
+    return {"objective": oid, "status": status, "source": source, "evidence": evidence}
+
+
+def _edit(path, sheet, ref, text):
+    """Simulate the owner typing into a cell (rewrites the workbook, leaves the AI record file alone)."""
+    z = zipfile.ZipFile(path)
+    names = fr._sheets(z)
+    parts = {i.filename: z.read(i.filename) for i in z.infolist()}
+    items = list(z.infolist())
+    z.close()
+    parts[names[sheet]] = fr.set_cell(parts[names[sheet]].decode(), ref, text).encode()
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as out:
+        for i in items:
+            out.writestr(i, parts[i.filename])
+
+
+def _cell(path, sheet, id_col, oid, col):
+    rows = read_xlsx.read(path)[sheet]
+    return next((r[col] if len(r) > col else "" for r in rows[1:] if r and r[id_col] == oid), None)
+
+
+@pytest.mark.skipif(not REGISTER.exists(), reason="set R3_REGISTER to a Rev 3 measurement register to run this")
+class TestMerge:
+    KEY = [{"r3": "03.01.01", "title": "t", "basis": "ceiling", "status": "PARTIALLY SATISFIED", "r2_sources": ["3.1.1"], "note": "n"}]
+
+    def _first(self, tmp_path):
+        res = _results(tmp_path / "r1", [_row("A.03.01.01.a.01", "Met"), _row("A.03.01.01.ODP.01", "Met", "document", "SSP states 90 days"),
+                                         _row("A.03.01.01.ODP.02", "Unmet", "none", "no value found")])
+        first = tmp_path / "first.xlsx"
+        fr.fill(REGISTER, first, self.KEY, res, "2026-10-05")
+        return first
+
+    def test_fill_writes_a_record_of_what_the_ai_wrote(self, tmp_path):
+        first = self._first(tmp_path)
+        rec = json.loads(Path(str(first) + ".aimeta.json").read_text())
+        assert rec["Objectives!H" + str(fr._rowof(first, "Objectives", 0, "A.03.01.01.a.01"))] == "Met"
+        assert any(k.startswith("ODPs!M") and v == "Needs review" for k, v in rec.items())
+
+    def test_merge_keeps_the_owners_edits_and_refreshes_the_rest(self, tmp_path):
+        first = self._first(tmp_path)
+        oh = fr._rowof(first, "Objectives", 0, "A.03.01.01.a.01")
+        om = fr._rowof(first, "ODPs", 0, "A.03.01.01.ODP[01]")
+        _edit(first, "Objectives", f"H{oh}", "Not Met")                    # the owner overrode the AI's Met
+        _edit(first, "ODPs", f"M{om}", "Defined")                          # the owner decided a parameter
+        _edit(first, "ODPs", f"I{om}", "90 days")
+        res2 = _results(tmp_path / "r2", [_row("A.03.01.01.a.01", "Unmet", evidence="new evidence"), _row("A.03.01.01.a.02", "Met"),
+                                          _row("A.03.01.01.ODP.01", "Unmet", "none", "no value now"),
+                                          _row("A.03.01.01.ODP.02", "Met", "document", "now stated: 30 days")])
+        second = tmp_path / "second.xlsx"
+        report = fr.merge(first, second, self.KEY, res2, "2026-10-06")
+        assert _cell(second, "Objectives", 0, "A.03.01.01.a.01", 7) == "Not Met"                  # owner's edit kept
+        assert _cell(second, "ODPs", 0, "A.03.01.01.ODP[01]", 12) == "Defined"
+        assert _cell(second, "ODPs", 0, "A.03.01.01.ODP[01]", 8) == "90 days"
+        assert _cell(second, "Objectives", 0, "A.03.01.01.a.02", 7) == "Met"                      # new row written
+        assert _cell(second, "ODPs", 0, "A.03.01.01.ODP[02]", 12) == "Needs review"               # untouched AI cell refreshed
+        assert "30 days" in _cell(second, "ODPs", 0, "A.03.01.01.ODP[02]", 11)
+        assert _cell(first, "Objectives", 0, "A.03.01.01.a.01", 7) == "Not Met"                   # the old file is unchanged
+        assert any("A.03.01.01.a.01" in c["what"] for c in report["kept"]) and report["written"] > 0
+        assert Path(str(second) + ".aimeta.json").exists()
+
+    def test_merge_refuses_a_file_it_has_no_record_for(self, tmp_path):
+        first = self._first(tmp_path)
+        Path(str(first) + ".aimeta.json").unlink()
+        with pytest.raises(fr.NoRecord):
+            fr.merge(first, tmp_path / "x.xlsx", self.KEY, tmp_path / "r1", "2026-10-06")
+
+    def test_adopt_rebuilds_the_record_for_a_file_made_before_records_existed(self, tmp_path):
+        first = self._first(tmp_path)
+        rec_path = Path(str(first) + ".aimeta.json")
+        original = rec_path.read_text()
+        rec_path.unlink()
+        n = fr.adopt(first, self.KEY, tmp_path / "r1", "2026-10-05")
+        assert n > 0 and json.loads(rec_path.read_text()) == json.loads(original)
+
+    def test_evidence_with_line_breaks_is_not_mistaken_for_an_owner_edit(self, tmp_path):
+        res = _results(tmp_path / "r", [_row("A.03.01.01.a.01", "Met", evidence="line one\nline  two\n\nline three")])
+        first = tmp_path / "first.xlsx"
+        fr.fill(REGISTER, first, self.KEY, res, "2026-10-05")
+        report = fr.merge(first, tmp_path / "second.xlsx", self.KEY, res, "2026-10-06")
+        assert report["kept"] == []
+
+    def test_adopt_records_cells_whose_text_has_odd_whitespace(self, tmp_path):
+        res = _results(tmp_path / "r", [_row("A.03.01.01.a.01", "Met", evidence="a\nb  c")])
+        first = tmp_path / "first.xlsx"
+        fr.fill(REGISTER, first, self.KEY, res, "2026-10-05")
+        rec = _record = Path(str(first) + ".aimeta.json")
+        full = json.loads(rec.read_text())
+        rec.unlink()
+        assert fr.adopt(first, self.KEY, res, "2026-10-05") == len(full)

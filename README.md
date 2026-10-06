@@ -81,6 +81,14 @@ Dropdowns and colors are built in (green Met, red Not Met, grey N/A, yellow stil
 column is empty on purpose: `key_r3.py` and `fill_register.py` can fill it from NIST's Rev 2 to Rev 3 mapping,
 and can write an AI scan's results into a copy. Always work on a copy; never put real findings in the template.
 
+**Running the scan again?** `fill_register.py` never overwrites a file. To bring a new scan into a register you have
+been editing, use the merge: `python3 fill_register.py results/<run> --into <your register> --out <new file>`. It
+writes a *new* file, refreshes the cells the AI wrote, and keeps every row where you changed a cell the AI wrote or typed
+in a column the AI never writes (a parameter's value, who decided it, a requirement's owner). Each filled register has a
+companion `.aimeta.json` recording what the AI wrote; for a register made before records existed, run
+`fill_register.py results/<run> --adopt <register> --date <date it was filled>` once. In `assess.sh`, set
+`WORKING_REGISTER=<your register>` to merge automatically at the end of a Rev 3 run.
+
 ## AI Bill of Materials
 
 `aibom/AIBOM.md` records exactly what produced the reference results, so others can reproduce or question them:
