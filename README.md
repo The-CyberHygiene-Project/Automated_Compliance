@@ -7,6 +7,8 @@ status and its evidence for every assessment objective. The AI makes the judgmen
 hands over one requirement at a time, enforces what the AI may do, and checks that the record is complete.
 Everything runs on one Mac with a local model: no assessment text leaves the machine.
 
+> **A reference system for research and development**, not a production assessment service.
+>
 > **Status: early.** One real requirement has been assessed end to end on Rev 3, and a full run is in progress.
 > The method works; the results are not yet validated. Treat everything here as a working tool, not an
 > assessment authority. It does not say what a contract requires, and it is not legal advice.
