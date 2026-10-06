@@ -24,7 +24,19 @@ sys.path.insert(0, str(HERE / "reference"))
 import read_xlsx  # noqa: E402
 
 DEFAULT_REGISTER = Path(os.environ.get("R3_REGISTER", str(HERE / "templates" / "NIST_800-171r3_Measurement_Register.xlsx")))
-DEFAULT_OUT = Path.home() / "NIST_800-171r3_Measurement_Register_filled.xlsx"
+
+
+def default_out(date):
+    """A dated name, so a new run never lands on a file the owner has been editing."""
+    return Path.home() / f"NIST_800-171r3_Measurement_Register_filled_{date}.xlsx"
+
+
+def load_key():
+    """The provisional Rev 2 carry-over key, or [] when there is none (then Rev 2 prefill is skipped)."""
+    try:
+        return json.loads(KEY_PATH.read_text())
+    except (OSError, ValueError):
+        return []
 KEY_PATH = Path(os.environ.get("R3_KEY_DIR", str(Path.home() / "compliance-private" / "r3-key"))) / "answer-key-r3.json"
 
 
@@ -79,7 +91,9 @@ def _odp_ref(oid):
     return re.sub(r"\.ODP\.(\d+)$", r".ODP[\1]", oid)
 
 
-def fill(register, out, key, results_dir, date):
+def fill(register, out, key, results_dir, date, force=False):
+    if Path(out).exists() and not force:
+        raise FileExistsError(f"{out} already exists and may hold your edits; give --out a new name (or --force to replace it)")
     results = {}
     model = "local model"
     for p in sorted(Path(results_dir).glob("*.json")):
@@ -162,11 +176,14 @@ def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("results", help="results folder of a Rev 3 run, e.g. results/run1-r3-<model>")
     ap.add_argument("--register", default=str(DEFAULT_REGISTER))
-    ap.add_argument("--out", default=str(DEFAULT_OUT))
+    ap.add_argument("--out", default=None, help="default: a dated file in your home folder")
+    ap.add_argument("--force", action="store_true", help="replace an existing output file")
     ap.add_argument("--date", default=__import__("time").strftime("%Y-%m-%d"))
     a = ap.parse_args(argv)
-    n = fill(a.register, a.out, json.loads(KEY_PATH.read_text()), a.results, a.date)
-    print(f"Wrote {a.out}: Rev 2 results on 97 requirements, {n} AI results from {a.results}")
+    out = a.out or str(default_out(a.date))
+    key = load_key()
+    n = fill(a.register, out, key, a.results, a.date, force=a.force)
+    print(f"Wrote {out}: Rev 2 results on {len(key)} requirements, {n} AI results from {a.results}")
     return 0
 
 

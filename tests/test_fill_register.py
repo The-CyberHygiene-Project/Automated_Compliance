@@ -71,3 +71,21 @@ def test_round_trip_on_the_real_register(tmp_path):
     assert odp["A.03.01.01.ODP[01]"][12] == "Needs review" and "90 days" in odp["A.03.01.01.ODP[01]"][11]
     assert odp["A.03.01.01.ODP[02]"][12] == "Not defined" and odp["A.03.01.01.ODP[01]"][8] == ""
     assert zipfile.ZipFile(out).testzip() is None
+
+
+def test_an_existing_output_is_never_overwritten_without_force(tmp_path):
+    out = tmp_path / "filled.xlsx"
+    out.write_text("the owner's edits")
+    with pytest.raises(FileExistsError):
+        fr.fill(tmp_path / "no-register-needed.xlsx", out, [], tmp_path, "2026-10-06")
+    assert out.read_text() == "the owner's edits"
+
+
+def test_the_default_output_name_carries_the_date_so_runs_never_collide():
+    assert fr.default_out("2026-10-06").name == "NIST_800-171r3_Measurement_Register_filled_2026-10-06.xlsx"
+    assert fr.default_out("2026-10-07") != fr.default_out("2026-10-06")
+
+
+def test_a_missing_rev2_key_skips_the_prefill_instead_of_failing(tmp_path, monkeypatch):
+    monkeypatch.setattr(fr, "KEY_PATH", tmp_path / "absent.json")
+    assert fr.load_key() == []

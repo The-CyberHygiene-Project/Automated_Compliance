@@ -32,3 +32,5 @@ OUT="results/$NAME"
 if [ "$REV" = 3 ]; then python3 grade_r3.py "$OUT/assessment.md" "$MODEL (run $RUN, Rev 3)" > "$OUT/grade.md"
 else python3 grade.py "$OUT/assessment.md" "$MODEL (run $RUN)" > "$OUT/grade.md"; fi
 echo "Done: $OUT/assessment.md and $OUT/grade.md"
+# Rev 3: also write the results into a copy of the measurement register (never overwrites an existing file)
+[ "$REV" = 3 ] && { python3 fill_register.py "$OUT" --out "$OUT/register-filled-$(date +%F).xlsx" || echo "(register not written; see the message above)"; }
