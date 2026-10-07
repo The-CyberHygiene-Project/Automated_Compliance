@@ -294,3 +294,79 @@ def test_the_basis_for_an_information_level_is_stated_in_the_proposal(tmp_path):
     c = configparser.ConfigParser(inline_comment_prefixes=(";",), interpolation=None)
     c.read_string(ini)
     assert c["contract.1"]["information"] == "FCI"
+
+
+# ---- DoD's own uses of three letters (DFARS 204.1603, as reported; the owner verifies against the regulation)
+def test_the_dod_specific_type_letters():
+    assert cs.number_kind("FA8650-12-S-0001") == "solicitation"     # broad agency announcement / commercial solutions opening
+    assert cs.number_kind("FA8650-12-T-0001") == "solicitation"     # automated request for quotations
+    assert cs.number_kind("FA8650-12-M-0001") == "order"            # FedMall purchase or delivery order
+
+
+# ---- the DATE of a clause (and any class deviation noted with it) is what fixes which rules apply
+def test_a_clause_date_is_read_from_beside_its_number():
+    text = ("252.204-7012 Safeguarding Covered Defense Information and Cyber Incident Reporting. (MAY 2024)\n"
+            "52.204-21 Basic Safeguarding of Covered Contractor Information Systems. (NOV 2021)\n")
+    d = cs.find_clause_dates(text)
+    assert d["DFARS 252.204-7012"] == ["MAY 2024"] and d["FAR 52.204-21"] == ["NOV 2021"]
+
+
+def test_a_date_belongs_to_the_clause_before_it_not_the_next_one():
+    text = "252.204-7012 Safeguarding Covered Defense Information. 252.204-7008 Compliance with Safeguarding. (OCT 2016)"
+    d = cs.find_clause_dates(text)
+    assert "DFARS 252.204-7012" not in d and d["DFARS 252.204-7008"] == ["OCT 2016"]
+
+
+def test_one_clause_with_two_dates_lists_both_oldest_first():
+    text = "52.204-21 Basic Safeguarding. (NOV 2021)\n...later attachment...\n52.204-21 Basic Safeguarding. (JUN 2016)\n"
+    assert cs.find_clause_dates(text)["FAR 52.204-21"] == ["JUN 2016", "NOV 2021"]
+
+
+def test_a_class_deviation_noted_with_a_clause_is_captured():
+    text = "252.204-7012 Safeguarding Covered Defense Information. (DEVIATION 2024-O0013)(MAY 2024)"
+    assert cs.find_clause_deviations(text)["DFARS 252.204-7012"] == ["2024-O0013"]
+    assert cs.find_clause_dates(text)["DFARS 252.204-7012"] == ["MAY 2024"]
+    assert cs.find_clause_deviations("252.204-7012 Safeguarding. (MAY 2024)") == {}
+
+
+def test_a_mention_without_a_date_has_no_date():
+    assert cs.find_clause_dates("The contractor shall comply with DFARS 252.204-7012.") == {}
+
+
+def test_proposals_show_the_clause_with_its_date_and_deviation(tmp_path):
+    (tmp_path / "award.txt").write_text("AWARD/CONTRACT FA9453-19-C-0500\n252.204-7012 Safeguarding Covered Defense Information. (DEVIATION 2024-O0013)(MAY 2024)\n52.204-21 Basic Safeguarding. (NOV 2021)\n")
+    p = cs.scan_folder(tmp_path)[0]
+    assert p["clause_dates"] == {"DFARS 252.204-7012": ["MAY 2024"], "FAR 52.204-21": ["NOV 2021"]}
+    assert p["clause_deviations"] == {"DFARS 252.204-7012": ["2024-O0013"]}
+    ini = cs.proposals_to_ini([p])
+    assert "DFARS 252.204-7012 (MAY 2024)" in ini and "FAR 52.204-21 (NOV 2021)" in ini and "2024-O0013" in ini
+    import configparser
+    c = configparser.ConfigParser(inline_comment_prefixes=(";",), interpolation=None)
+    c.read_string(ini)
+    assert "DFARS 252.204-7012 (MAY 2024)" in c["contract.1"]["clauses"]
+
+
+# ---- clause-date layouts seen in real contracts (public records tested 2026-10-07)
+def test_clause_dates_in_every_layout_real_contracts_use():
+    bare = "252.204-7012 Safeguarding Covered Defense Information and Cyber Incident Reporting DEC 2019 252.204-7015 Notice of Authorized Disclosure"
+    assert cs.find_clause_dates(bare)["DFARS 252.204-7012"] == ["DEC 2019"]
+    slash = "252.204-7012 SAFEGUARDING COVERED DEFENSE INFORMATION AND CYBER INCIDENT REPORTING OCT/2016 45 252.204-7015 NOTICE OF AUTHORIZED DISCLOSURE"
+    assert cs.find_clause_dates(slash)["DFARS 252.204-7012"] == ["OCT 2016"]            # a page or row number after the date is ignored
+    assert cs.find_clause_dates("52.204-21 BASIC SAFEGUARDING OF COVERED CONTRACTOR INFORMATION SYSTEMS JUN/2016 (a) Definitions.")["FAR 52.204-21"] == ["JUN 2016"]
+    assert cs.find_clause_dates("252.204-7008 Compliance With Safeguarding Covered Defense Information Controls (OCT 2016)")["DFARS 252.204-7008"] == ["OCT 2016"]
+    assert cs.find_clause_dates("252.204-7012 Safeguarding Covered Defense Information. (MAY/2024)")["DFARS 252.204-7012"] == ["MAY 2024"]
+
+
+def test_a_date_in_a_nearby_sentence_is_not_a_clause_date():
+    sentence = ("The contractor shall comply with DFARS 252.204-7012. This applies to all information systems that process, store or transmit "
+                "covered defense information, and the contracting officer reviewed the plan in March 2024 before award.")
+    assert cs.find_clause_dates(sentence) == {}
+    assert cs.find_clause_dates("As required by 252.204-7012, the report was issued on OCT 2016 in a separate memo about something else entirely, "
+                                "which is long enough that it cannot be the title of the clause.") == {}
+
+
+def test_two_clauses_in_one_table_each_get_their_own_date():
+    table = ("252.204-7008 Compliance With Safeguarding Covered Defense Information Controls OCT 2016 252.204-7012 Safeguarding Covered "
+             "Defense Information and Cyber Incident Reporting DEC 2019 252.204-7015 Notice of Authorized Disclosure")
+    d = cs.find_clause_dates(table)
+    assert d["DFARS 252.204-7008"] == ["OCT 2016"] and d["DFARS 252.204-7012"] == ["DEC 2019"] and "DFARS 252.204-7015" not in d

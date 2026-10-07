@@ -245,6 +245,18 @@ business paper is messy:
 - The result is a list of proposals, each with the source file, what was found and a confidence level. The owner accepts,
   edits or rejects each one, then adds anything missing by hand.
 
+**Clause numbers and their dates**
+
+- The scan reports each protection clause with its **number and its date** (for example DFARS 252.204-7012 (DEC 2019), FAR 52.204-21
+  (JUN 2016)), and any class deviation printed beside it. Contract people know the numbers; the **date** is what fixes which version
+  of a clause applies, and so which rules, including which version of NIST SP 800-171. The scan reports what the contract says. The
+  owner decides what it means.
+- Dates are printed in more than one way in real contracts: in brackets as (OCT 2016), bare as OCT 2016, or with a slash as OCT/2016,
+  sometimes followed by a page number. A date counts only when it sits right after a clause title; a date in a nearby sentence is
+  ignored. When a clause appears with two dates, both are listed.
+- In the public contracts used to test the scan, the same clause carries different dates in different documents (for example
+  DFARS 252.204-7012 dated OCT 2016 in one and DEC 2019 in another), which is why the date has to be recorded with the clause.
+
 **What a solicitation tells you, and what it does not**
 
 - A solicitation is written as a draft contract with added sections: K (representations and certifications), L (instructions to

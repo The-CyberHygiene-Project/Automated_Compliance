@@ -32,11 +32,14 @@ CLAUSE_SOURCES = {"52": "FAR", "252": "DFARS", "1852": "NFS", "552": "GSAR", "30
 AGENCY_PREFIXES = [("FA", "DoW"), ("SP", "DoW"), ("HQ", "DoW"), ("HC", "DoW"), ("W", "DoW"), ("N", "DoW"), ("47", "GSA"), ("GS-", "GSA"),
                    ("70", "other_civilian"), ("75", "other_civilian"), ("80", "other_civilian"), ("89", "other_civilian"),
                    ("36", "other_civilian"), ("69", "other_civilian")]
-# A Procurement Instrument Identification Number (PIIN, DFARS 204.70) is: funding office (6 characters) - fiscal year (2 digits)
-# - type letter - sequence number (4 characters), e.g. FA8650-12-D-1234. Forms often print it without the hyphens.
-# The type letter (the D above) says what the document is.
+# A Procurement Instrument Identifier (PIID, FAR 4.16; formerly a PIIN under DFARS 204.70) is: funding office (6 characters) -
+# fiscal year (2 digits) - type letter - sequence number (4 characters), e.g. FA8650-12-D-1234. Forms often print it without
+# the hyphens. The type letter (the D above) says what the document is: FAR 4.1603(a)(3) prescribes the letters, and DoD
+# uses M, S and T for its own purposes (DFARS 204.1603, as reported; check against the regulation). Letters not listed
+# here are reserved or unknown to this table, and the scan says "unknown" rather than guess.
 TYPE_LETTERS = {"A": "agreement", "B": "solicitation", "C": "award", "D": "award", "F": "order", "G": "agreement", "H": "order",
-                "J": "order", "P": "purchase_order", "Q": "solicitation", "R": "solicitation"}
+                "J": "order", "P": "purchase_order", "Q": "solicitation", "R": "solicitation",
+                "M": "order", "S": "solicitation", "T": "solicitation"}
 MARKERS = {
     "CUI": re.compile(r"Controlled Unclassified Information|\bCUI\b", re.I),
     "FCI": re.compile(r"Federal Contract Information|\bFCI\b"),
@@ -81,6 +84,47 @@ def find_clauses(text):
         if name not in out:
             out.append(name)
     return out
+
+
+_MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
+# Clause dates are printed as (OCT 2016), as OCT 2016 with no brackets, or as OCT/2016, sometimes followed by a page number.
+_DATE = re.compile(r"\(?\s*\b(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[A-Z]*\.?[ /\-]\s*(\d{4})\b\s*\)?", re.I)
+_TITLE_REACH = 180      # a clause title is short: a date farther from the number than this belongs to a sentence, not the title
+_DEVIATION = re.compile(r"\(\s*(?:CLASS\s+)?DEVIATION\s+([0-9A-Z][0-9A-Z\-]*)\s*\)", re.I)
+
+
+def _after_each_clause(text):
+    """(clause name, the text between it and the next clause number, limited to a title's length)."""
+    ms = list(_CLAUSE.finditer(text))
+    for i, m in enumerate(ms):
+        end = min(ms[i + 1].start() if i + 1 < len(ms) else len(text), m.end() + 300)
+        yield f"{CLAUSE_SOURCES[m.group(1)]} {m.group(1)}.{m.group(2)}-{m.group(3)}", text[m.end():end]
+
+
+def find_clause_dates(text):
+    """{clause: [dates, oldest first]}. A clause's date, e.g. (MAY 2024), sits beside its number in the contract's clause list.
+    The date (and any class deviation) is what fixes which version of a clause, and so which rules, apply."""
+    out = {}
+    for name, window in _after_each_clause(text):
+        m = _DATE.search(window)
+        span = window[:m.start()] if m else ""
+        # between the number and the date there is only a title: no sentence break (a period, then a capitalised word)
+        # nor a comma followed by a lowercase word (", the report was issued on"): that is narrative
+        if m and len(span) <= _TITLE_REACH and not re.search(r"\.\s+[A-Za-z]|,\s+[a-z]", span):
+            d = f"{m.group(1).upper()} {m.group(2)}"
+            if d not in out.setdefault(name, []):
+                out[name].append(d)
+    return {k: sorted(v, key=lambda s: (int(s[-4:]), _MONTHS.index(s[:3]))) for k, v in out.items()}
+
+
+def find_clause_deviations(text):
+    """{clause: [class deviation numbers]} for clauses printed with a deviation, e.g. (DEVIATION 2024-O0013)."""
+    out = {}
+    for name, window in _after_each_clause(text):
+        m = _DEVIATION.search(window)
+        if m and m.group(1).upper() not in out.setdefault(name, []):
+            out[name].append(m.group(1).upper())
+    return {k: v for k, v in out.items() if v}
 
 
 def find_markers(text):
@@ -217,7 +261,21 @@ def _analyse(text, name):
     clauses = find_clauses(text)
     return {"file": name, "folder": str(Path(name).parent), "numbers": list(dict.fromkeys(nums)), "clauses": clauses,
             "markers": find_markers(text), "revisions": find_revision_hints(text), "instrument": instrument_guess(text),
-            "marking": find_cui_marking(text, name), "klm": has_klm(text)}
+            "marking": find_cui_marking(text, name), "klm": has_klm(text),
+            "clause_dates": find_clause_dates(text), "clause_deviations": find_clause_deviations(text)}
+
+
+def _merge_dates(docs, relevant, key):
+    out = {}
+    for d in docs:
+        for clause, vals in d[key].items():
+            if clause in relevant:
+                for v in vals:
+                    if v not in out.setdefault(clause, []):
+                        out[clause].append(v)
+    if key == "clause_dates":
+        out = {c: sorted(v, key=lambda s: (int(s[-4:]), _MONTHS.index(s[:3]))) for c, v in out.items()}
+    return out
 
 
 def _proposal(docs, reference):
@@ -261,7 +319,8 @@ def _proposal(docs, reference):
             "clauses": relevant, "other_clauses": len(clauses) - len(relevant), "markers": sorted(markers),
             "revision_hint": sorted(set().union(*(d["revisions"] for d in docs))), "prime_known": prime_known, "duty_from": duty,
             "export_controls": ", ".join(m for m in ("ITAR", "EAR") if m in markers) or "unknown",
-            "information_basis": basis, "cui_marked": marked, "categories": cats, "dissemination": diss, "marking_how": how,
+            "information_basis": basis, "clause_dates": _merge_dates(docs, relevant, "clause_dates"),
+            "clause_deviations": _merge_dates(docs, relevant, "clause_deviations"), "cui_marked": marked, "categories": cats, "dissemination": diss, "marking_how": how,
             "information_if_awarded": information_if_awarded, "joined_by_folder": [d["file"] for d in docs if d.get("joined")],
             "files": [d["file"] for d in docs], "confidence": confidence, "needs_a_person": False}
 
@@ -296,13 +355,18 @@ def scan_folder(folder):
     for name, why in unreadable:
         props.append({"label": Path(name).stem, "reference": "", "instrument": "other", "agency_group": "unknown", "information": "unknown",
                       "clauses": [], "other_clauses": 0, "markers": [], "revision_hint": [], "prime_known": "", "duty_from": "",
-                      "export_controls": "unknown", "number_kind": "unknown", "fiscal_year": None, "office": "", "cui_marked": False, "information_basis": "",
+                      "export_controls": "unknown", "number_kind": "unknown", "fiscal_year": None, "office": "", "cui_marked": False, "information_basis": "", "clause_dates": {}, "clause_deviations": {},
                       "categories": [], "dissemination": [], "marking_how": [], "information_if_awarded": "", "joined_by_folder": [], "files": [name], "confidence": "low", "needs_a_person": True, "why": why})
     return props
 
 
 _BASIS_WORDS = {"clauses": "from the clauses", "marking": "the document is marked",
                 "award floor": "at least: an executed contract is not public (prices, delivery dates) - award floor, inferred and not stated"}
+
+
+def _clause_with_date(p, clause):
+    dates = p["clause_dates"].get(clause)
+    return f"{clause} ({', '.join(dates)})" if dates else clause
 
 
 def organization_level(props):
@@ -342,7 +406,8 @@ def proposals_to_ini(props):
                 f"information = {p['information']}" + (f"   ; {_BASIS_WORDS[p['information_basis']]}" if p["information_basis"] else ""),
                 *([f"information_if_awarded = {p['information_if_awarded']}"] if p["instrument"] == "solicitation" else []),
                 f"cui_marked = {'yes' if p['cui_marked'] else 'no'}", f"cui_categories = {', '.join(p['categories'])}",
-                f"dissemination_controls = {', '.join(p['dissemination'])}", f"clauses = {', '.join(p['clauses'])}",
+                f"dissemination_controls = {', '.join(p['dissemination'])}", f"clauses = {', '.join(_clause_with_date(p, c) for c in p['clauses'])}",
+                *([f"clause_deviations = {'; '.join(f'{c}: {', '.join(v)}' for c, v in p['clause_deviations'].items())}"] if p["clause_deviations"] else []),
                 f"required_revision = {rev}", f"revision_basis = {'contract_text' if rev != 'unspecified' else 'assumed'}",
                 f"export_controls = {p['export_controls']}", f"prime_known = {p['prime_known']}", "last_verified =", ""]
     if people:
