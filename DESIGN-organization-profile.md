@@ -83,6 +83,14 @@ Some companies limit CUI to a defined enclave instead. The profile can describe 
 the assessor would then assess the enclave. Whether a narrower boundary is acceptable is for the contract and the assessor to
 decide, not for this tool.
 
+**Held, or only bid on.** A solicitation is normally posted publicly (on SAM.gov), so, in the author's reasoning, FCI
+protection does not apply to the solicitation itself. It does apply to the contract once it is agreed, because an executed
+contract contains information that is not public, such as Section B (items and prices) and delivery dates. So an **award
+carries at least FCI** even when no clause says so, and a CUI clause raises that to CUI. The level for the organization is
+therefore worked out from the contracts it **holds**, not from solicitations it has bid on; a solicitation only shows what
+*would* apply if it were awarded. A solicitation or attachment with restricted distribution is a different case, which the
+marking check (below) is there to catch.
+
 What this means for the checklist: CUI selects an 800-171 checklist (which revision depends on the contract, below). A company
 whose contracts bring only FCI would need the basic safeguarding checklist, **which this project does not have yet**; only
 the two 800-171 checklists exist.

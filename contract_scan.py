@@ -240,23 +240,28 @@ def _proposal(docs, reference):
     diss = sorted(set().union(*(d["marking"]["dissemination"] for d in docs)))
     how = sorted(set().union(*(set(d["marking"]["how"]) for d in docs)))
     info = information_type(markers | ({"CUI"} if marked else set()), clauses)
+    basis = ("marking" if marked else "clauses") if info != "unknown" else ""
+    # An executed contract is not public (Section B prices, delivery dates), so an award carries at least FCI even when no
+    # clause says so. A solicitation is normally posted publicly, so the floor applies to the award it previews, not to it.
+    if instrument == "prime" and info == "unknown":
+        info, basis = "FCI", "award floor"
     # A solicitation previews its award: the duty shown is "if awarded". The solicitation itself holds CUI only if it is marked.
-    information_if_awarded = info if instrument == "solicitation" else ""
+    information_if_awarded = (info if info != "unknown" else "FCI") if instrument == "solicitation" else ""
     if instrument == "solicitation":
-        info = "CUI" if marked else "unknown"
+        info, basis = ("CUI", "marking") if marked else ("unknown", "")
     duty = "clauses" if relevant else ("nda" if instrument == "nda" or ("NDA" in markers and info == "unknown") else
                                        ("markers" if info != "unknown" else ""))
     prime_known = ""
     if instrument in ("subcontract", "purchase_order", "consulting"):
         prime_known = "yes" if any(d["numbers"] for d in docs) else "no"
-    confidence = "high" if reference and relevant and info != "unknown" else ("medium" if (reference or relevant or info != "unknown") else "low")
+    confidence = "high" if reference and relevant and basis in ("clauses", "marking") else ("medium" if (reference or relevant or info != "unknown") else "low")
     return {"label": reference or Path(docs[0]["file"]).stem, "reference": reference, "instrument": instrument,
             "number_kind": kind, "fiscal_year": (decode_piin(reference) or {}).get("fiscal_year"),
             "office": (decode_piin(reference) or {}).get("office", ""), "agency_group": agency_guess(reference) if reference else "unknown", "information": info,
             "clauses": relevant, "other_clauses": len(clauses) - len(relevant), "markers": sorted(markers),
             "revision_hint": sorted(set().union(*(d["revisions"] for d in docs))), "prime_known": prime_known, "duty_from": duty,
             "export_controls": ", ".join(m for m in ("ITAR", "EAR") if m in markers) or "unknown",
-            "cui_marked": marked, "categories": cats, "dissemination": diss, "marking_how": how,
+            "information_basis": basis, "cui_marked": marked, "categories": cats, "dissemination": diss, "marking_how": how,
             "information_if_awarded": information_if_awarded, "joined_by_folder": [d["file"] for d in docs if d.get("joined")],
             "files": [d["file"] for d in docs], "confidence": confidence, "needs_a_person": False}
 
@@ -291,9 +296,23 @@ def scan_folder(folder):
     for name, why in unreadable:
         props.append({"label": Path(name).stem, "reference": "", "instrument": "other", "agency_group": "unknown", "information": "unknown",
                       "clauses": [], "other_clauses": 0, "markers": [], "revision_hint": [], "prime_known": "", "duty_from": "",
-                      "export_controls": "unknown", "number_kind": "unknown", "fiscal_year": None, "office": "", "cui_marked": False,
+                      "export_controls": "unknown", "number_kind": "unknown", "fiscal_year": None, "office": "", "cui_marked": False, "information_basis": "",
                       "categories": [], "dissemination": [], "marking_how": [], "information_if_awarded": "", "joined_by_folder": [], "files": [name], "confidence": "low", "needs_a_person": True, "why": why})
     return props
+
+
+_BASIS_WORDS = {"clauses": "from the clauses", "marking": "the document is marked",
+                "award floor": "at least: an executed contract is not public (prices, delivery dates) - award floor, inferred and not stated"}
+
+
+def organization_level(props):
+    """The level for the whole organization: the highest among contracts HELD. Solicitations are bids, not contracts held."""
+    order = {"unknown": 0, "FCI": 1, "CUI": 2}
+    held = [p for p in props if not p["needs_a_person"] and p["instrument"] != "solicitation"]
+    bids = [p for p in props if not p["needs_a_person"] and p["instrument"] == "solicitation"]
+    level = max((p["information"] for p in held), key=order.get, default="unknown")
+    awarded = max((p["information_if_awarded"] for p in bids), key=order.get, default="unknown")
+    return {"level": level, "held": len(held), "bids": len(bids), "if_all_awarded": max([level, awarded], key=order.get)}
 
 
 def proposals_to_ini(props):
@@ -319,7 +338,8 @@ def proposals_to_ini(props):
                 f"found: {p['instrument']}, {p['duty_from'] or 'no duty found'}"
                 f"{', FY' + str(p['fiscal_year']) if p['fiscal_year'] else ''}; other clauses mentioned: {p['other_clauses']})",
                 f"[contract.{n}]", f"label = {p['label']}", f"reference = {p['reference']}", f"agency_group = {agency}",
-                f"vehicle = {vehicle}", f"information = {p['information']}",
+                f"vehicle = {vehicle}",
+                f"information = {p['information']}" + (f"   ; {_BASIS_WORDS[p['information_basis']]}" if p["information_basis"] else ""),
                 *([f"information_if_awarded = {p['information_if_awarded']}"] if p["instrument"] == "solicitation" else []),
                 f"cui_marked = {'yes' if p['cui_marked'] else 'no'}", f"cui_categories = {', '.join(p['categories'])}",
                 f"dissemination_controls = {', '.join(p['dissemination'])}", f"clauses = {', '.join(p['clauses'])}",
@@ -340,6 +360,9 @@ def main(argv=None):
     out.write_text(proposals_to_ini(props))
     ok = [p for p in props if not p["needs_a_person"]]
     print(f"{len(ok)} proposed entries, {len(props) - len(ok)} files need a person. Wrote {out}")
+    lv = organization_level(props)
+    print(f"Highest level among contracts held ({lv['held']}): {lv['level']}. Solicitations ({lv['bids']}) are not counted; "
+          f"if all were awarded: {lv['if_all_awarded']}.")
     for p in ok:
         print(f"  {p['label']:<24} {p['instrument']:<14} {p['information']:<8} {p['agency_group']:<8} confidence {p['confidence']}  ({len(p['files'])} file(s))")
     return 0

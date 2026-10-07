@@ -257,3 +257,40 @@ def test_defining_the_abbreviation_is_not_marking_and_a_single_stray_mark_is_not
     assert not cs.find_cui_marking(defined, "contract.pdf")["marked"]
     assert not cs.find_cui_marking("(CUI) one stray mark only", "contract.pdf")["marked"]            # real markings repeat
     assert not cs.find_cui_marking("a list item\nCUI\nanother item", "contract.pdf")["marked"]      # one lone line is not a banner
+
+
+# ---- owner's FCI reasoning (2026-10-07): a solicitation is public; an executed contract is not (prices, delivery dates)
+def test_an_executed_award_carries_at_least_fci_even_when_no_clause_says_so(tmp_path):
+    (tmp_path / "nasa.txt").write_text("AWARD/CONTRACT 80GSFC-20-C-0010\nNFS 1852.204-76 applies.\n")
+    (tmp_path / "army.txt").write_text("AWARD/CONTRACT W56HZV-19-C-0014\nDFARS 252.204-7012 applies.\n")
+    props = {p["files"][0]: p for p in cs.scan_folder(tmp_path)}
+    assert props["nasa.txt"]["information"] == "FCI" and props["nasa.txt"]["information_basis"] == "award floor"
+    assert props["army.txt"]["information"] == "CUI" and props["army.txt"]["information_basis"] == "clauses"
+
+
+def test_a_solicitation_is_public_so_nothing_applies_now_and_an_award_would_carry_at_least_fci(tmp_path):
+    (tmp_path / "rfp.txt").write_text("Solicitation W81XWH-20-R-0124 with no cybersecurity clause at all.")
+    p = cs.scan_folder(tmp_path)[0]
+    assert p["instrument"] == "solicitation" and p["information"] == "unknown"
+    assert p["information_if_awarded"] == "FCI"
+
+
+def test_the_organisation_level_counts_contracts_held_not_solicitations_bid_on(tmp_path):
+    (tmp_path / "rfp.txt").write_text("Solicitation W81XWH-20-R-0124 with DFARS 252.204-7012.")
+    only_bid = cs.organization_level(cs.scan_folder(tmp_path))
+    assert only_bid == {"level": "unknown", "held": 0, "bids": 1, "if_all_awarded": "CUI"}
+    (tmp_path / "award.txt").write_text("AWARD/CONTRACT 80GSFC-20-C-0010 NFS 1852.204-76")
+    held = cs.organization_level(cs.scan_folder(tmp_path))
+    assert held["level"] == "FCI" and held["held"] == 1 and held["bids"] == 1 and held["if_all_awarded"] == "CUI"
+    (tmp_path / "army.txt").write_text("AWARD/CONTRACT FA9453-19-C-0500 DFARS 252.204-7012")
+    assert cs.organization_level(cs.scan_folder(tmp_path))["level"] == "CUI"                  # the highest held wins
+
+
+def test_the_basis_for_an_information_level_is_stated_in_the_proposal(tmp_path):
+    (tmp_path / "nasa.txt").write_text("AWARD/CONTRACT 80GSFC-20-C-0010")
+    ini = cs.proposals_to_ini(cs.scan_folder(tmp_path))
+    assert "information = FCI" in ini and "award floor" in ini
+    import configparser
+    c = configparser.ConfigParser(inline_comment_prefixes=(";",), interpolation=None)
+    c.read_string(ini)
+    assert c["contract.1"]["information"] == "FCI"
