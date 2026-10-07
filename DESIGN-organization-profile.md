@@ -121,17 +121,25 @@ these obligations belong to the company. The assessment lists them **apart from 
 
 **The DD Form 2345 and the Joint Certification Program.** DD Form 2345 is the application for certification under the Joint
 Certification Program (JCP), the US and Canadian program that certifies a company to receive unclassified, export-controlled
-technical data (drawings, software and controlled attachments). As reported by the summaries the author supplied, and **not yet
-checked against the program's own pages** (which block automated access):
+technical data (drawings, software and controlled attachments). The facts below are confirmed by the author's own approval letter
+and approved form (primary documents; no identifiers are reproduced here):
 
-- The certification is tied to a **specific facility and its CAGE code**, and it runs for **five years** before renewal. The profile
-  therefore records an expiry date (`dd_form_2345_expires`) so the tool can warn before it lapses.
-- The form names a **data custodian** who answers for handling and access. The profile records that person (`data_custodian`).
+- The certification is tied to a **specific facility and its CAGE code**, and it is **valid for five years**, with the expiry date in
+  Block 7c of the approved form. The profile records it as `dd_form_2345_expires`, **written as YYYY-MM-DD**, because the form's
+  slash dates are ambiguous between month-first and day-first (US civilian practice is month-first; military and international
+  practice is often day-first). The tool warns **90 days and again 30 days** before the date, and says plainly if the date is blank.
+- A **revised form** is required whenever information on it changes, for example the company name, a new data custodian or a
+  change of address. A certified entity must also **not provide the data to a non-certified entity**; a violation can revoke the
+  certification. A request for the data is accompanied by a copy of the approved form and a statement of intended use.
+- The form names a **data custodian** who must be a citizen, or lawfully admitted permanent resident, of the United States or Canada.
+  The profile records that person (`data_custodian`).
 - The certification is what lets a company see restricted attachments on the platforms that distribute them. One of the public
   solicitations used to test the scan says its CUI "will be made available through an access request", which is the kind of place this
   matters. That is an example, not a rule the tool applies.
-- The summaries also say that applying or renewing requires an 800-171 self-assessment score recorded in the Supplier Performance Risk
-  System. If that is right it joins this project's assessment directly to the certification; the author is asked to confirm it.
+- **Renewal needs an 800-171 self-assessment score recorded in the Supplier Performance Risk System (SPRS).** The author confirms
+  this from their own renewal. It joins this project's assessment directly to the certification: the score posted is the author's
+  own determination, supported by evidence, and this tool only helps gather it.
+
 
 "To vet" items come from a secondary summary, not from the regulations, and some of them are stated more strictly there than the
 rules are (for example United States storage, registration and a technology control plan each depend on what the company does).
