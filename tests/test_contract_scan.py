@@ -376,10 +376,10 @@ def test_two_clauses_in_one_table_each_get_their_own_date():
 def test_export_control_terms_trigger_the_dd_form_2345_item(tmp_path):
     (tmp_path / "po.txt").write_text("PURCHASE ORDER 77. Supplier shall comply with ITAR and the EAR. Export-controlled technical data may be exchanged.")
     p = cs.scan_folder(tmp_path)[0]
-    assert [r["id"] for r in p["additional_requirements"]] == ["dd_form_2345"]
+    assert [r["id"] for r in p["additional_requirements"] if r["status"] == "owner"] == ["dd_form_2345"]      # the item the owner named
     assert "DD Form 2345" in p["additional_requirements"][0]["text"]
     ini = cs.proposals_to_ini([p])
-    assert "dd_form_2345 = unknown" in ini and "DD Form 2345" in ini
+    assert "[export_controls]" in ini and "dd_form_2345 = unknown" in ini and "DD Form 2345" in ini
 
 
 def test_no_export_control_terms_no_extra_items(tmp_path):
@@ -389,10 +389,48 @@ def test_no_export_control_terms_no_extra_items(tmp_path):
     assert "dd_form_2345" not in cs.proposals_to_ini([p])
 
 
-def test_the_extra_requirements_are_reviewable_data_one_item_per_id_even_if_both_regimes_appear():
-    assert cs.ADDITIONAL_REQUIREMENTS["ITAR"][0]["id"] == "dd_form_2345" and cs.ADDITIONAL_REQUIREMENTS["EAR"][0]["id"] == "dd_form_2345"
-    assert [r["id"] for r in cs.additional_requirements({"ITAR", "EAR"})] == ["dd_form_2345"]      # listed once
+def test_the_extra_requirements_are_reviewable_data_with_a_status_per_item():
+    items = {r["id"]: r for r in cs.ADDITIONAL_REQUIREMENTS}
+    assert items["dd_form_2345"]["status"] == "owner"                                   # named by the owner
+    assert all(r["status"] in ("owner", "to_vet") for r in items.values())
+    assert {"us_persons_only", "storage_location", "restricted_party_screening", "visitor_nationality", "ddtc_registration",
+            "technology_control_plan", "classification"} <= set(items)
+    assert all(items[i]["status"] == "to_vet" for i in items if i != "dd_form_2345")    # candidates, not yet the owner's requirements
+    assert all(r["ask"].endswith("?") for r in items.values())                          # every item is a question, never an assertion
+
+
+def test_each_item_is_listed_once_and_registration_is_an_itar_item_only():
+    both = [r["id"] for r in cs.additional_requirements({"ITAR", "EAR"})]
+    assert len(both) == len(set(both)) and "ddtc_registration" in both
+    assert "ddtc_registration" not in [r["id"] for r in cs.additional_requirements({"EAR"})]
+    assert "dd_form_2345" in [r["id"] for r in cs.additional_requirements({"EAR"})]
     assert cs.additional_requirements({"CUI", "NDA"}) == []
+
+
+def test_the_expt_marking_alone_triggers_the_items_that_apply_to_either_regime():
+    ids = [r["id"] for r in cs.additional_requirements(set(), categories=["EXPT"])]
+    assert "dd_form_2345" in ids and "us_persons_only" in ids and "ddtc_registration" not in ids      # regime unknown: not guessed
+    assert cs.additional_requirements(set(), categories=["CTI"]) == []
+
+
+def test_a_cui_expt_marking_in_a_document_triggers_the_items(tmp_path):
+    (tmp_path / "sow.txt").write_text("CUI//SP-EXPT\nStatement of work.\nCUI//SP-EXPT")
+    p = cs.scan_folder(tmp_path)[0]
+    assert "dd_form_2345" in [r["id"] for r in p["additional_requirements"]]
+
+
+def test_the_ini_has_one_export_controls_section_for_the_whole_organisation(tmp_path):
+    (tmp_path / "a.txt").write_text("AWARD/CONTRACT FA9453-19-C-0500. ITAR applies.")
+    (tmp_path / "b.txt").write_text("AWARD/CONTRACT FA8650-12-D-1234. EAR applies.")
+    ini = cs.proposals_to_ini(cs.scan_folder(tmp_path))
+    assert sum(1 for line in ini.splitlines() if line.strip() == "[export_controls]") == 1                 # one section, not one per contract
+    import configparser
+    c = configparser.ConfigParser(inline_comment_prefixes=(";",), interpolation=None)
+    c.read_string(ini)
+    sec = c["export_controls"]
+    assert sec["dd_form_2345"] == "unknown" and sec["us_persons_only"] == "unknown" and sec["ddtc_registration"] == "unknown"
+    assert "FA9453-19-C-0500" in sec["triggered_by"] and "FA8650-12-D-1234" in sec["triggered_by"]
+    assert "to vet" in ini.lower()                                                       # candidates are labelled as such
 
 
 def test_export_control_terms_do_not_silently_raise_the_level(tmp_path):

@@ -97,15 +97,37 @@ the two 800-171 checklists exist.
 
 ## Export-controlled information (ITAR and EAR)
 
-Export-controlled information is a kind of CUI (the category is "export controlled"), and it carries **extra obligations on top of
-NIST SP 800-171**. When the scan finds ITAR or EAR terms in a contract, it adds them to the proposal and raises the first item the
-author named: a **DD Form 2345** joint agreement (US and Canada), which is needed for access to export-controlled technical data.
-The assessment lists items like this **apart from the 800-171 objectives**, as additional obligations from the company's contracts,
-because they come from the contract and not from NIST.
+Export-controlled information is a kind of CUI (the category is "export controlled"), and it brings obligations that **NIST SP 800-171
+does not cover**. 800-171 says how a system is hardened. Export controls are about who may see the information, where it may be, and
+how the company manages its legal export boundaries. A system can meet 800-171 and still have an export problem if a foreign national
+can see the data.
 
-The list is a small table that the owner can extend; other items, for example limits on access by foreign persons, are expected to
-belong on it. Terms that merely mention ITAR or EAR do not raise the organization's level by themselves, because a commercial
-purchase order can mention them without the data being export controlled. The owner confirms.
+**When it triggers.** The scan raises an export-controls section when it finds ITAR or EAR terms in a contract, or a `CUI//SP-EXPT`
+marking on a document. It is one section for the whole organization (`[export_controls]`), not a field on every contract, because
+these obligations belong to the company. The assessment lists them **apart from the 800-171 objectives**.
+
+**Every item is a question for the owner** (yes, no or unknown), never a statement of the law:
+
+| Item | Named by | Status |
+|---|---|---|
+| DD Form 2345 joint agreement (US and Canada) for access to export-controlled technical data | the author | in use |
+| Access limited to U.S. persons, including administrators and outside IT support | summary | **to vet** |
+| Stored in the U.S., or protected by end-to-end encryption with FIPS-validated cryptography whose keys no foreign person holds | summary | **to vet** |
+| People, visitors and vendors screened against restricted-party lists | summary | **to vet** |
+| A visitor's nationality checked before they could see the information (a deemed export) | summary | **to vet** |
+| Registration with the State Department's Directorate of Defense Trade Controls, if the company manufactures, exports or brokers (ITAR only) | summary | **to vet** |
+| A Technology Control Plan | summary | **to vet** |
+| The USML category (ITAR) or ECCN (EAR) of the information held is known | summary | **to vet** |
+
+"To vet" items come from a secondary summary, not from the regulations, and some of them are stated more strictly there than the
+rules are (for example United States storage, registration and a technology control plan each depend on what the company does).
+They are therefore asked as questions, and the owner confirms which are real requirements for the company before any is treated as
+one. The table in the code is data the owner can correct.
+
+Terms that merely mention ITAR or EAR do not raise the organization's level by themselves, because a commercial purchase order can
+mention them without the data being export controlled. The owner confirms. Several items connect to other parts of this design:
+the U.S.-persons question applies to the outside parties with hands on the systems, the visitor question to the company's visitor
+log, and the marking is one the scan already reads.
 
 ## The contracts decide the checklist
 
