@@ -376,7 +376,8 @@ def test_two_clauses_in_one_table_each_get_their_own_date():
 def test_export_control_terms_trigger_the_dd_form_2345_item(tmp_path):
     (tmp_path / "po.txt").write_text("PURCHASE ORDER 77. Supplier shall comply with ITAR and the EAR. Export-controlled technical data may be exchanged.")
     p = cs.scan_folder(tmp_path)[0]
-    assert [r["id"] for r in p["additional_requirements"] if r["status"] == "owner"] == ["dd_form_2345"]      # the item the owner named
+    assert [r["id"] for r in p["additional_requirements"] if r["status"] == "owner"] == [
+        "dd_form_2345", "dd_form_2345_updated_on_change", "recipients_are_certified", "custodian_is_citizen_or_resident"]  # owner items
     assert "DD Form 2345" in p["additional_requirements"][0]["text"]
     ini = cs.proposals_to_ini([p])
     assert "[export_controls]" in ini and "dd_form_2345 = unknown" in ini and "DD Form 2345" in ini
@@ -395,7 +396,8 @@ def test_the_extra_requirements_are_reviewable_data_with_a_status_per_item():
     assert all(r["status"] in ("owner", "to_vet") for r in items.values())
     assert {"us_persons_only", "storage_location", "restricted_party_screening", "visitor_nationality", "ddtc_registration",
             "technology_control_plan", "classification"} <= set(items)
-    assert all(items[i]["status"] == "to_vet" for i in items if i != "dd_form_2345")    # candidates, not yet the owner's requirements
+    owner_ids = {"dd_form_2345", "dd_form_2345_updated_on_change", "recipients_are_certified", "custodian_is_citizen_or_resident"}
+    assert all(items[i]["status"] == "to_vet" for i in items if i not in owner_ids)    # candidates, not yet the owner's requirements
     assert all(r["ask"].endswith("?") for r in items.values())                          # every item is a question, never an assertion
 
 
@@ -461,3 +463,29 @@ def test_no_certification_fields_when_nothing_export_controlled_was_found(tmp_pa
     (tmp_path / "a.txt").write_text("AWARD/CONTRACT FA9453-19-C-0500 DFARS 252.204-7012")
     ini = cs.proposals_to_ini(cs.scan_folder(tmp_path))
     assert "dd_form_2345_expires" not in ini and "data_custodian" not in ini
+
+
+# ---- obligations stated in the owner's own JCP approval letter and DD Form 2345 (primary documents, 2026-10-07)
+def test_items_from_the_jcp_letter_and_form_are_owner_items_not_candidates():
+    items = {r["id"]: r for r in cs.ADDITIONAL_REQUIREMENTS}
+    for i in ("dd_form_2345_updated_on_change", "recipients_are_certified", "custodian_is_citizen_or_resident"):
+        assert items[i]["status"] == "owner" and items[i]["ask"].endswith("?")
+    assert "data custodian" in items["dd_form_2345_updated_on_change"]["text"].lower()
+    assert "non-certified" in items["recipients_are_certified"]["text"].lower()
+    assert "permanent residence" in items["custodian_is_citizen_or_resident"]["text"].lower()
+
+
+def test_the_owner_items_come_before_the_candidates_in_the_organisation_section(tmp_path):
+    (tmp_path / "a.txt").write_text("AWARD/CONTRACT FA9453-19-C-0500. Supplier shall comply with ITAR and the EAR. Export-controlled technical data may be exchanged.")
+    ini = cs.proposals_to_ini(cs.scan_folder(tmp_path))
+    keys = [l.split("=")[0].strip() for l in ini.split("\n[export_controls]\n")[1].splitlines() if "=" in l and not l.startswith("#")]
+    owner = [i for i in keys if i in ("dd_form_2345", "dd_form_2345_updated_on_change", "recipients_are_certified", "custodian_is_citizen_or_resident")]
+    assert keys.index("us_persons_only") > max(keys.index(i) for i in owner)
+
+
+def test_a_slash_date_that_could_be_month_day_or_day_month_is_flagged_as_ambiguous():
+    assert cs.ambiguous_slash_date("11/09/2026") is True            # 9 Nov or 11 Sep
+    assert cs.ambiguous_slash_date("11/13/2026") is False           # only month/day can be right
+    assert cs.ambiguous_slash_date("25/09/2026") is False           # only day/month can be right
+    assert cs.ambiguous_slash_date("11/11/2026") is False           # the same either way
+    assert cs.ambiguous_slash_date("2026-11-09") is False

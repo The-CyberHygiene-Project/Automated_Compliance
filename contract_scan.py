@@ -61,6 +61,16 @@ ADDITIONAL_REQUIREMENTS = [
               "certification, which lets a facility with a CAGE code receive export-controlled unclassified technical data (as reported: valid "
               "for five years, and it names a data custodian)"),
      "ask": "Do you hold a current DD Form 2345 (Joint Certification Program) certification, and when does it expire?"},
+    # From the owner's own JCP approval letter and the approved DD Form 2345 (primary documents), so status "owner".
+    {"id": "dd_form_2345_updated_on_change", "status": "owner", "applies": _ALL,
+     "text": "A revised DD Form 2345 is submitted whenever information on it becomes outdated, for example the company name, a new data custodian or a change of address",
+     "ask": "Is the form revised when any of those change?"},
+    {"id": "recipients_are_certified", "status": "owner", "applies": _ALL,
+     "text": "A certified entity must not provide militarily critical technical data to a non-certified entity (violation may lead to revocation of the certification)",
+     "ask": "Do you check that anyone you pass the data to is certified?"},
+    {"id": "custodian_is_citizen_or_resident", "status": "owner", "applies": _ALL,
+     "text": "The data custodian named on the form is a citizen, or a person lawfully admitted for permanent residence, of the United States or Canada",
+     "ask": "Is your named data custodian a citizen or permanent resident?"},
     {"id": "us_persons_only", "status": "to_vet", "applies": _ALL,
      "text": "Access to the export-controlled information is limited to U.S. persons, including administrators and outside IT support",
      "ask": "Is access limited to U.S. persons?"},
@@ -167,6 +177,15 @@ def additional_requirements(markers, categories=()):
     if not regimes and "EXPT" in categories:
         regimes = {"EXPT"}
     return [r for r in ADDITIONAL_REQUIREMENTS if regimes & set(r["applies"])]
+
+
+def ambiguous_slash_date(text):
+    """True for a date like 11/09/2026 that reads differently as month/day and as day/month. The owner confirms which was meant."""
+    m = re.fullmatch(r"(\d{1,2})/(\d{1,2})/(\d{2,4})", text.strip())
+    if not m:
+        return False
+    a, b = int(m.group(1)), int(m.group(2))
+    return a != b and a <= 12 and b <= 12
 
 
 def find_markers(text):
@@ -427,7 +446,7 @@ def _export_section(props):
         for r in group:
             out.append(f"{r['id']} = unknown   ; yes | no | unknown. {r['ask']}")
             if r["id"] == "dd_form_2345":                      # the certification is tied to a facility, runs five years and names a custodian
-                out += ["dd_form_2345_expires =   ; the date the certification expires (as reported, valid for five years)",
+                out += ["dd_form_2345_expires =   ; the date the certification expires (the approved form states it; valid for five years)",
                         "data_custodian =   ; the person named on the form as responsible for the controlled data"]
     return out + [""]
 
