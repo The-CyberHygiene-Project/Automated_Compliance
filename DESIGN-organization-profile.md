@@ -237,6 +237,23 @@ business paper is messy:
 - The result is a list of proposals, each with the source file, what was found and a confidence level. The owner accepts,
   edits or rejects each one, then adds anything missing by hand.
 
+**What a solicitation tells you, and what it does not**
+
+- A solicitation is written as a draft contract with added sections: K (representations and certifications), L (instructions to
+  offerors) and M (evaluation criteria), which are removed at award. It is a **preview of the contract**. The clauses it lists
+  show what an *award* would require. They may not apply to the solicitation itself, and the solicitation may hold no CUI at all
+  (one of the real solicitations used to test the scan says CUI will be made available only through an access request).
+- Where CUI is present it is typically in the statement of work (Section C) or in an attachment. The individual documents are
+  marked, with banner and portion markings and often with "CUI" at the front of the file name ("CUI Statement of Work").
+- So the scan keeps two questions apart. **A duty** is what the clauses require (for a solicitation, "if awarded"). **Marked CUI**
+  means the document itself is marked, with the categories and limited dissemination controls read from the marking. The word
+  "CUI" inside a clause is not a marking, defining the abbreviation is not one, and a real marking repeats (a banner top and bottom,
+  a mark on each paragraph), so a single stray one is ignored.
+- A solicitation is recognised by the type letter in its number (R, Q or B) or by the presence of sections K, L and M. A company
+  should be able to tell what it **holds** from what it has **bid on**.
+- A marked attachment kept in the same subfolder as a contract is proposed as part of that contract, flagged for the owner to
+  confirm. In a flat folder with several contracts it is not guessed onto one.
+
 - This is a complex topic, and the first version would get parts of it wrong. The people who use it will see more cases than
   one author can.
 
