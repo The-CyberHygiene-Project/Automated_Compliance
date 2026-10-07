@@ -183,3 +183,22 @@ def test_the_command_line_reports_problems_and_exits_nonzero_only_on_errors(tmp_
     assert op.main([str(good)], today=TODAY) == 0
     assert op.main([str(bad)], today=TODAY) == 1
     assert "whole number" in capsys.readouterr().out
+
+
+def test_the_context_option_prints_only_the_ai_safe_facts_as_json_and_refuses_a_profile_with_errors(tmp_path, capsys):
+    import json
+    good = tmp_path / "good.ini"; good.write_text(BASE)
+    assert op.main(["--context", str(good)], today=TODAY) == 0
+    out = capsys.readouterr().out
+    ctx = json.loads(out)
+    assert ctx["size_band"] == "nano" and ctx["other_personnel"] == "yes"
+    assert "Secret Name" not in out and "secret-host" not in out
+    bad = tmp_path / "bad.ini"; bad.write_text(BASE.replace("employees = 3", "employees = x"))
+    assert op.main(["--context", str(bad)], today=TODAY) == 1
+    captured = capsys.readouterr()
+    assert captured.out.strip() == "" and "whole number" in captured.err       # nothing on stdout for the shell to pick up
+
+
+def test_the_private_profile_and_the_generated_context_are_never_published():
+    ignored = (Path(__file__).resolve().parents[1] / ".gitignore").read_text().split()
+    assert "profile.ini" in ignored and ".context.json" in ignored

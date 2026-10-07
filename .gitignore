@@ -9,3 +9,4 @@ reference/NIST_SP800-171_rev3_catalog.json
 reference/*.xlsx
 .pytest_cache/
 profile.ini
+.context.json

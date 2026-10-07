@@ -226,3 +226,65 @@ def test_rev3_placeholders_name_the_parameter_they_depend_on():
     reqs = assess.requirements(text)
     ids = {o for r in reqs for o, _ in r["objectives"]}
     assert ids >= {"A.03.01.01.ODP.01", "A.03.01.01.f.02"}
+
+
+def test_strict_rounds_say_a_policy_proves_defined_not_implemented_and_default_rounds_do_not(tmp_path):
+    req = assess.requirements((HERE / "kit-r3" / "objectives.md").read_text())[0]
+    for strict in (True, False):
+        model = scripted(*[{"role": "assistant", "content": "", "tool_calls": [call("record_results", {"results": []})]}] * 90)
+        cfg = assess.Config(results=tmp_path, transport=model, host=lambda c: "", ask=lambda c, r: False,
+                            docs=HERE / "docs", max_steps=1, rev3=True, strict=strict)
+        assess.run_requirement(req, cfg)
+        system = model.sent[0]["messages"][0]["content"]
+        assert ("never proves it is implemented" in system) == strict
+
+
+# ---- the organization profile's context reaches the rounds (the profile itself never does)
+CTX = {"size_band": "nano", "other_personnel": "no", "owner_is_it_admin": "yes", "security_lead": "unknown",
+       "organization_level": "CUI", "kits": [3], "systems": [{"kind": "server", "administered_by": "owner"}]}
+
+
+def _system_prompt(tmp_path, context):
+    req = assess.requirements((HERE / "kit-r3" / "objectives.md").read_text())[0]
+    model = scripted(*[{"role": "assistant", "content": "", "tool_calls": [call("record_results", {"results": []})]}] * 90)
+    cfg = assess.Config(results=tmp_path, transport=model, host=lambda c: "", ask=lambda c, r: False,
+                        docs=HERE / "docs", max_steps=1, rev3=True, context=context)
+    assess.run_requirement(req, cfg)
+    return model.sent[0]["messages"][0]["content"]
+
+
+def test_the_stated_facts_and_the_na_rule_reach_the_round_only_when_a_context_is_given(tmp_path):
+    with_ctx = _system_prompt(tmp_path / "a", CTX)
+    assert "other_personnel: no" in with_ctx and "owner_is_it_admin: yes" in with_ctx and "size_band: nano" in with_ctx
+    assert "write the fact's name" in with_ctx
+    assert "security_lead" not in with_ctx                                 # unknown facts are left out, never guessed
+    without = _system_prompt(tmp_path / "b", None)
+    assert "other_personnel" not in without and "write the fact's name" not in without
+
+
+def test_the_prompt_never_carries_more_than_the_context_it_was_given(tmp_path):
+    prompt = _system_prompt(tmp_path, {"other_personnel": "no"})
+    assert "owner_is_it_admin" not in prompt and "size_band" not in prompt
+
+
+def test_with_a_profile_an_na_must_name_a_stated_fact_and_without_one_it_need_not():
+    req = {"id": "03.09.02", "objectives": [("A.03.09.02.a", "text")]}
+    bare = [{"objective": "A.03.09.02.a", "status": "N/A", "source": "document", "evidence": "No employees here."}]
+    named = [{"objective": "A.03.09.02.a", "status": "N/A", "source": "document",
+              "evidence": "other_personnel = no, so there is no one to terminate."}]
+    assert "other_personnel" in assess._validate(req, bare, ["document"], facts=["other_personnel"])
+    assert assess._validate(req, named, ["document"], facts=["other_personnel"]) == ""
+    assert assess._validate(req, bare, ["document"]) == ""                  # no profile: unchanged behaviour
+
+
+def test_a_context_file_is_read_as_a_json_object_and_anything_else_is_refused(tmp_path):
+    f = tmp_path / "c.json"
+    f.write_text('{"other_personnel": "no"}')
+    assert assess.load_context(f) == {"other_personnel": "no"}
+    f.write_text("[1, 2]")
+    try:
+        assess.load_context(f)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("a list is not a context")

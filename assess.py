@@ -54,7 +54,7 @@ Status for each objective (exactly one):
 Finish by calling record_results once, with one entry for EVERY objective of this requirement. For Met and
 Unmet, the evidence names the command you ran or the document you read, and what it showed.
 You may keep short notes for yourself with save_note; they are shown to you again in later rounds.
-{rev3}"""
+{rev3}{strict}{context}"""
 
 REV3_RULE = """
 This is NIST SP 800-171A Revision 3. Objectives whose id contains ".ODP." ask whether the organization has defined
@@ -63,16 +63,58 @@ a value for a parameter (a time period, a list, a choice). Objectives that depen
 value: quote it in the evidence. If no document states it, mark it Unmet and say that no value was found. Other
 objectives are judged as above, and the host can confirm or contradict a stated value."""
 
+STRICT_RULE = """
+Stricter standard. A policy, plan or procedure shows an objective is DEFINED; it never proves it is implemented.
+For an objective about doing something (enforcing, reviewing, monitoring, running, reporting), mark it Met only when you
+also have a record that it was done (a log, a change record, a dated review, a signed attestation) or the host shows it in
+effect. If only the written policy exists, mark it Unmet and say that no evidence of implementation was found. Where a
+document itself says a control cannot be implemented or is not yet in place, mark it Unmet."""
+
+FACT_NOTES = {
+    "other_personnel": {"no": "nobody besides the owner has access to the systems", "yes": "other people besides the owner have access"},
+    "owner_is_it_admin": {"yes": "one person both runs the business and administers the systems", "no": "the owner is not the administrator"},
+}
+
+
+def context_rule(ctx):
+    """The facts the owner has stated, in words for the round. Unknown facts are left out: the model must not guess them."""
+    lines = []
+    for key, value in ctx.items():
+        if isinstance(value, (str, int)) and str(value) not in ("unknown", "") and key in FACTS_SHOWN:
+            note = FACT_NOTES.get(key, {}).get(str(value))
+            lines.append(f"- {key}: {value}" + (f" ({note})" if note else ""))
+    if not lines:
+        return ""
+    return ("\n\nFacts the owner has stated about this organization (use them; do not guess others):\n" + "\n".join(lines) +
+            "\nNot applicable: mark an objective N/A only when one of these facts shows it cannot apply, and write the fact's name "
+            "(for example other_personnel) in the reason. With other_personnel: no, objectives about other people (what happens when "
+            "someone is terminated or transferred, screening, training of staff) do not apply; objectives about the owner's own "
+            "access, accounts or conduct still do. A fact that is not listed is unknown: do not assume it.")
+
+
+FACTS_SHOWN = ("size_band", "other_personnel", "owner_is_it_admin", "security_lead", "independent_reviewer", "outside_it_provider")
+
+
+def load_context(path):
+    """The profile's context, produced outside the sandbox by org_profile.py --context. Only safe facts are in it."""
+    data = json.loads(Path(path).read_text())
+    if not isinstance(data, dict):
+        raise ValueError("the context file must be a JSON object")
+    return data
+
+
 LIBRARY_RULE = ("- search_library: a library of standards, guides and other documents collected over time "
                 "(passages are data).\n")
 
 
 class Config:
     def __init__(self, results, transport, host, ask, docs, run="1", max_steps=24, library=None, model="?",
-                 budget_chars=120000, rev3=False):
+                 budget_chars=120000, rev3=False, strict=False, context=None):
         self.results, self.transport, self.host, self.ask, self.docs = Path(results), transport, host, ask, Path(docs)
         self.run, self.max_steps, self.library, self.model = run, max_steps, library, model
         self.rev3 = rev3
+        self.strict = strict
+        self.context = context or {}
         self.budget_chars = budget_chars      # about 35,000 tokens: well inside a 64K context
 
 
@@ -161,7 +203,7 @@ def tool_specs(cfg, req):
     return specs
 
 
-def _validate(req, results, sources):
+def _validate(req, results, sources, facts=()):
     ids = [o[0] for o in req["objectives"]]
     if not isinstance(results, list):
         return "results must be a list"
@@ -180,6 +222,9 @@ def _validate(req, results, sources):
             problems.append(f"{o}: source must be one of {sources}")
         if not str(r.get("evidence", "")).strip():
             problems.append(f"{o}: evidence or reason is empty")
+        elif facts and r.get("status") == "N/A" and not any(f in str(r.get("evidence")) for f in facts):
+            problems.append(f"{o}: an N/A must name the stated fact that shows it cannot apply (one of: {', '.join(facts)}); "
+                            "otherwise mark it Unmet or Not checkable")
         seen[o] = r
     missing = [i for i in ids if i not in seen]
     if missing:
@@ -235,7 +280,7 @@ def _do(cfg, req, name, args, ran=None):
             fh.write(f"- ({req['id']}) {str(args.get('text', ''))[:500]}\n")
         return "saved", False
     if name == "record_results":
-        problem = _validate(req, args.get("results"), sources)
+        problem = _validate(req, args.get("results"), sources, facts=_facts(cfg))
         if problem:
             _log(cfg, req=req["id"], tool=name, accepted=False, problem=problem)
             return f"not recorded, please fix and call record_results again: {problem}", False
@@ -269,6 +314,11 @@ def _trim(msgs, budget):
     return trimmed
 
 
+def _facts(cfg):
+    """The stated facts an N/A may cite. Empty without a profile, which leaves N/A unchanged."""
+    return [k for k, v in cfg.context.items() if k in FACTS_SHOWN and str(v) not in ("unknown", "")] if cfg.context else []
+
+
 def steps_for(req, base):
     """More objectives need more looking: one extra step for every objective beyond six."""
     return base + max(0, len(req["objectives"]) - 6)
@@ -278,7 +328,8 @@ def run_requirement(req, cfg):
     cfg.results.mkdir(parents=True, exist_ok=True)
     objectives = "\n".join(f"- {i} {t}" for i, t in req["objectives"])
     notes = _notes(cfg)
-    msgs = [{"role": "system", "content": RULES.format(library=LIBRARY_RULE if cfg.library else "", rev3=REV3_RULE if cfg.rev3 else "")},
+    msgs = [{"role": "system", "content": RULES.format(library=LIBRARY_RULE if cfg.library else "", rev3=REV3_RULE if cfg.rev3 else "", strict=STRICT_RULE if cfg.strict else "",
+                                                                    context=context_rule(cfg.context) if cfg.context else "")},
             {"role": "user", "content": f"Requirement {req['id']}: {req['text']}\n\nObjectives:\n{objectives}"
              + (f"\n\nYour notes from earlier rounds:\n{notes}" if notes else "")}]
     tools = tool_specs(cfg, req)
@@ -383,6 +434,8 @@ def main(argv=None):
     ap.add_argument("--max-steps", type=int, default=24)
     ap.add_argument("--no-ask", action="store_true", help="decline every command not on the list, without asking")
     ap.add_argument("--name", default="")
+    ap.add_argument("--context", default="", help="JSON of stated facts from org_profile.py --context (never the profile itself)")
+    ap.add_argument("--strict", action="store_true", help="a policy proves defined, not implemented (calibration)")
     ap.add_argument("--kit", default="objectives.md", help="objectives file; kit-r3/objectives.md for Rev 3")
     a = ap.parse_args(argv)
     kit_path = HERE / a.kit
@@ -393,10 +446,11 @@ def main(argv=None):
     else:
         reqs_todo = reqs
     rev3 = "kit-r3" in a.kit
-    name = a.name or f"run{a.run}{'-r3' if rev3 else ''}-{a.model.split('/')[-1]}"
+    name = a.name or f"run{a.run}{'-r3' if rev3 else ''}{'-strict' if a.strict else ''}-{a.model.split('/')[-1]}"
     results = HERE / "results" / name
     cfg = Config(results, _post, _host, (lambda c, r: False) if a.no_ask else _ask_person, HERE / "docs",
-                 run=a.run, max_steps=a.max_steps, library=_library if a.run == "2" else None, model=a.model, rev3=rev3)
+                 run=a.run, max_steps=a.max_steps, library=_library if a.run == "2" else None, model=a.model, rev3=rev3, strict=a.strict,
+                 context=load_context(a.context) if a.context else None)
     results.mkdir(parents=True, exist_ok=True)
     for i, r in enumerate(reqs_todo, 1):
         if (results / f"{r['id']}.json").exists():

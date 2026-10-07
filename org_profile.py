@@ -6,6 +6,7 @@ Blank always means unknown, and unknown stays unknown. Runs on the Python 3.9 th
 """
 import configparser
 import datetime
+import json
 import sys
 from pathlib import Path
 
@@ -268,13 +269,23 @@ def _contract_findings(profile, today):
 
 def main(argv=None, today=None):
     argv = sys.argv[1:] if argv is None else argv
+    as_context = "--context" in argv
+    argv = [a for a in argv if a != "--context"]
     path = argv[0] if argv else "profile.ini"
+    out = sys.stderr if as_context else sys.stdout       # with --context, stdout carries only the JSON
     try:
         profile = load_path(path)
     except ProfileError as e:
-        print(f"ERROR: {e}")
+        print(f"ERROR: {e}", file=out)
         return 1
     findings = check(profile, today)
+    if as_context:
+        for f in findings:
+            print(("ERROR: " if f["level"] == "error" else "warning: ") + f["message"], file=out)
+        if any(f["level"] == "error" for f in findings):
+            return 1
+        print(json.dumps(assessment_context(profile, today), indent=1))
+        return 0
     for f in findings:
         print(("ERROR: " if f["level"] == "error" else "warning: ") + f["message"])
     errors = sum(f["level"] == "error" for f in findings)
