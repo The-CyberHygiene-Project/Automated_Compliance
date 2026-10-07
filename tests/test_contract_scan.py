@@ -370,3 +370,32 @@ def test_two_clauses_in_one_table_each_get_their_own_date():
              "Defense Information and Cyber Incident Reporting DEC 2019 252.204-7015 Notice of Authorized Disclosure")
     d = cs.find_clause_dates(table)
     assert d["DFARS 252.204-7008"] == ["OCT 2016"] and d["DFARS 252.204-7012"] == ["DEC 2019"] and "DFARS 252.204-7015" not in d
+
+
+# ---- export-controlled terms bring extra obligations beyond 800-171 (owner, 2026-10-07)
+def test_export_control_terms_trigger_the_dd_form_2345_item(tmp_path):
+    (tmp_path / "po.txt").write_text("PURCHASE ORDER 77. Supplier shall comply with ITAR and the EAR. Export-controlled technical data may be exchanged.")
+    p = cs.scan_folder(tmp_path)[0]
+    assert [r["id"] for r in p["additional_requirements"]] == ["dd_form_2345"]
+    assert "DD Form 2345" in p["additional_requirements"][0]["text"]
+    ini = cs.proposals_to_ini([p])
+    assert "dd_form_2345 = unknown" in ini and "DD Form 2345" in ini
+
+
+def test_no_export_control_terms_no_extra_items(tmp_path):
+    (tmp_path / "award.txt").write_text("AWARD/CONTRACT FA9453-19-C-0500 DFARS 252.204-7012")
+    p = cs.scan_folder(tmp_path)[0]
+    assert p["additional_requirements"] == []
+    assert "dd_form_2345" not in cs.proposals_to_ini([p])
+
+
+def test_the_extra_requirements_are_reviewable_data_one_item_per_id_even_if_both_regimes_appear():
+    assert cs.ADDITIONAL_REQUIREMENTS["ITAR"][0]["id"] == "dd_form_2345" and cs.ADDITIONAL_REQUIREMENTS["EAR"][0]["id"] == "dd_form_2345"
+    assert [r["id"] for r in cs.additional_requirements({"ITAR", "EAR"})] == ["dd_form_2345"]      # listed once
+    assert cs.additional_requirements({"CUI", "NDA"}) == []
+
+
+def test_export_control_terms_do_not_silently_raise_the_level(tmp_path):
+    # commercial terms that mention ITAR/EAR are not proof the data held is export controlled: the owner confirms
+    (tmp_path / "po.txt").write_text("PURCHASE ORDER 77. Comply with ITAR and EAR.")
+    assert cs.scan_folder(tmp_path)[0]["information"] == "unknown"

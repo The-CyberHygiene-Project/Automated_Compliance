@@ -95,6 +95,18 @@ What this means for the checklist: CUI selects an 800-171 checklist (which revis
 whose contracts bring only FCI would need the basic safeguarding checklist, **which this project does not have yet**; only
 the two 800-171 checklists exist.
 
+## Export-controlled information (ITAR and EAR)
+
+Export-controlled information is a kind of CUI (the category is "export controlled"), and it carries **extra obligations on top of
+NIST SP 800-171**. When the scan finds ITAR or EAR terms in a contract, it adds them to the proposal and raises the first item the
+author named: a **DD Form 2345** joint agreement (US and Canada), which is needed for access to export-controlled technical data.
+The assessment lists items like this **apart from the 800-171 objectives**, as additional obligations from the company's contracts,
+because they come from the contract and not from NIST.
+
+The list is a small table that the owner can extend; other items, for example limits on access by foreign persons, are expected to
+belong on it. Terms that merely mention ITAR or EAR do not raise the organization's level by themselves, because a commercial
+purchase order can mention them without the data being export controlled. The owner confirms.
+
 ## The contracts decide the checklist
 
 Which revision of 800-171 applies is set by the **contract**, not by the company. A business may hold contracts that point at different revisions, so the profile lists every contract or subcontract that brings controlled information, and the assessor works out which checklists to run.

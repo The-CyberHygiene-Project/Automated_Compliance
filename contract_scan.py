@@ -49,6 +49,12 @@ MARKERS = {
 }
 # Limited dissemination controls that can follow a CUI marking (CUI//SP-CTI//NOFORN). Reviewable; add as the rules change.
 DISSEMINATION = ("NOFORN", "FEDCON", "NOCON", "FED ONLY", "DL ONLY", "REL TO", "DISPLAY ONLY")
+# Extra obligations that come with export-controlled information (ITAR, EAR). Export-controlled information is a kind of CUI and
+# these items sit on top of NIST SP 800-171; the assessment lists them apart from the 800-171 objectives. Reviewable: the owner
+# adds the other items that belong here (for example limits on access by foreign persons).
+_DD2345 = {"id": "dd_form_2345", "text": "DD Form 2345 joint agreement (US and Canada Joint Certification Program) for access to export-controlled technical data",
+           "ask": "Do you hold a current DD Form 2345 certification?"}
+ADDITIONAL_REQUIREMENTS = {"ITAR": [_DD2345], "EAR": [_DD2345]}
 READABLE = {".docx", ".md", ".txt", ".csv", ".pdf"}
 
 _PIIN = re.compile(r"\b([A-Z0-9]{6})-?(\d{2})-?([A-Z])-?([A-Z0-9]{4})(?:-?([A-Z0-9]{4}))?\b")
@@ -125,6 +131,16 @@ def find_clause_deviations(text):
         if m and m.group(1).upper() not in out.setdefault(name, []):
             out[name].append(m.group(1).upper())
     return {k: v for k, v in out.items() if v}
+
+
+def additional_requirements(markers):
+    """The extra items triggered by export-control markers, each listed once."""
+    out = []
+    for m in ("ITAR", "EAR"):
+        for item in ADDITIONAL_REQUIREMENTS.get(m, []) if m in markers else []:
+            if item["id"] not in [o["id"] for o in out]:
+                out.append(item)
+    return out
 
 
 def find_markers(text):
@@ -319,7 +335,7 @@ def _proposal(docs, reference):
             "clauses": relevant, "other_clauses": len(clauses) - len(relevant), "markers": sorted(markers),
             "revision_hint": sorted(set().union(*(d["revisions"] for d in docs))), "prime_known": prime_known, "duty_from": duty,
             "export_controls": ", ".join(m for m in ("ITAR", "EAR") if m in markers) or "unknown",
-            "information_basis": basis, "clause_dates": _merge_dates(docs, relevant, "clause_dates"),
+            "additional_requirements": additional_requirements(markers), "information_basis": basis, "clause_dates": _merge_dates(docs, relevant, "clause_dates"),
             "clause_deviations": _merge_dates(docs, relevant, "clause_deviations"), "cui_marked": marked, "categories": cats, "dissemination": diss, "marking_how": how,
             "information_if_awarded": information_if_awarded, "joined_by_folder": [d["file"] for d in docs if d.get("joined")],
             "files": [d["file"] for d in docs], "confidence": confidence, "needs_a_person": False}
@@ -355,7 +371,7 @@ def scan_folder(folder):
     for name, why in unreadable:
         props.append({"label": Path(name).stem, "reference": "", "instrument": "other", "agency_group": "unknown", "information": "unknown",
                       "clauses": [], "other_clauses": 0, "markers": [], "revision_hint": [], "prime_known": "", "duty_from": "",
-                      "export_controls": "unknown", "number_kind": "unknown", "fiscal_year": None, "office": "", "cui_marked": False, "information_basis": "", "clause_dates": {}, "clause_deviations": {},
+                      "export_controls": "unknown", "number_kind": "unknown", "fiscal_year": None, "office": "", "cui_marked": False, "information_basis": "", "additional_requirements": [], "clause_dates": {}, "clause_deviations": {},
                       "categories": [], "dissemination": [], "marking_how": [], "information_if_awarded": "", "joined_by_folder": [], "files": [name], "confidence": "low", "needs_a_person": True, "why": why})
     return props
 
@@ -396,6 +412,9 @@ def proposals_to_ini(props):
         if p["instrument"] == "solicitation":
             out.append("# SOLICITATION, not an award: it previews the contract. The clauses shown apply to an award ('information_if_awarded'),")
             out.append("# not necessarily to this document, which holds CUI only if it is marked (cui_marked).")
+        if p["additional_requirements"]:
+            out.append(f"# EXPORT-CONTROLLED terms found ({p['export_controls']}). Export-controlled information is a kind of CUI, and it brings extra "
+                       f"obligations on top of 800-171: {'; '.join(r['text'] for r in p['additional_requirements'])}. Confirm whether they apply.")
         if p["joined_by_folder"]:
             out.append(f"# JOINED BY FOLDER (confirm): {', '.join(p['joined_by_folder'][:5])}")
         out += [f"# PROPOSED from: {', '.join(p['files'][:5])}{' ...' if len(p['files']) > 5 else ''}   (confidence: {p['confidence']}; "
@@ -409,7 +428,9 @@ def proposals_to_ini(props):
                 f"dissemination_controls = {', '.join(p['dissemination'])}", f"clauses = {', '.join(_clause_with_date(p, c) for c in p['clauses'])}",
                 *([f"clause_deviations = {'; '.join(f'{c}: {', '.join(v)}' for c, v in p['clause_deviations'].items())}"] if p["clause_deviations"] else []),
                 f"required_revision = {rev}", f"revision_basis = {'contract_text' if rev != 'unspecified' else 'assumed'}",
-                f"export_controls = {p['export_controls']}", f"prime_known = {p['prime_known']}", "last_verified =", ""]
+                f"export_controls = {p['export_controls']}",
+                *[f"dd_form_2345 = unknown   ; yes | no | unknown. {r['ask']}" for r in p["additional_requirements"] if r["id"] == "dd_form_2345"],
+                f"prime_known = {p['prime_known']}", "last_verified =", ""]
     if people:
         out += ["# NEEDS A PERSON (could not be read): " + "; ".join(people), ""]
     return "\n".join(out)
