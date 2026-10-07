@@ -232,7 +232,22 @@ Two rules follow:
 ## What the AI sees, and what it does not
 
 The profile holds sensitive business facts (contract names, clauses, who holds which role). The assessor builds a
-short **assessment context** from it for the AI: size band, role model, system kinds and whether each is outsourced, and which revisions to assess. It **never** passes contract names, numbers, clauses, prime or subcontractor names, or the company name. The profile file itself sits where the sandbox blocks the AI from reading it, like the answer keys.
+short **assessment context** from it for the AI: size band, role model, system kinds and whether each is outsourced, and which revisions to assess, and **one plain yes/no fact about people: `other_personnel`** (are there any employees or other
+people with access to the systems besides the owner?). It **never** passes contract names, numbers, clauses, prime or subcontractor names, or the company name. The profile file itself sits where the sandbox blocks the AI from reading it, like the answer keys.
+
+**Why `other_personnel` is shared.** Many 800-171A objectives are about people: what happens when someone is terminated or
+transferred, personnel screening, training, rules of behavior. With no one but the owner, those objectives do not apply, and the
+assessor must be able to say so. Without the fact, a strict rule reads a written procedure as "defined but not done" and marks
+the objective Unmet, when the truth is that no occasion has arisen. This was seen in a calibration run: the termination and
+media-recovery objectives of requirement 03.09.02 came back Unmet for a company with no employees; the owner's answer was
+"no employees".
+
+- It is a single yes/no, not a head count, so it reveals less than the size band does. The count itself (`employees`, `people`) stays
+  private. The tool derives the answer from `people` (1 means no) unless the owner states it, and the owner can override it.
+- It lets an objective be marked **N/A with a reason that cites this fact**, which is the only kind of N/A the design allows
+  ("`other_personnel = no`: there is no one to terminate or transfer"). It does not excuse an objective that applies to the owner
+  alone, such as the owner's own access or training.
+- Blank means unknown, and unknown stays unknown: the assessor then asks, it does not assume.
 
 ## File format
 
