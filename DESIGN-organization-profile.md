@@ -4,25 +4,16 @@
 
 ## Why a profile
 
-NIST SP 800-171 does not get easier for a small company: the same requirements apply to a one-person firm and a
-large one. What changes is **how** each requirement is met, **what evidence** exists, and **which objectives truly do
-not apply**. Today the assessor quietly assumes one world (a single administrator, one server). A profile makes the
-assumptions explicit, so the tool can say "assessed as a three-person company" and a reader can check the facts.
+NIST SP 800-171 applies equally to a contractor information system operated by a small company as to a
+large one. What changes is the complexity and size of the information system and **how** each requirement is met, **what evidence** exists, and **which objectives truly do not apply**. Today this automated assessor quietly assumes one world (a single administrator, one server). A profile makes the assumptions explicit, so the tool can say "assessed as a three-person company" and a reader can check the facts.
 
-**Positioning.** This is a **reference system for research and development**, not a production assessment service. It shows
-how a local AI can assess a small environment safely, and it is meant to be copied and adapted.
+**Positioning.** This is a **reference system for research and development**, not a production assessment service. It shows how a local AI can assess a small environment safely, and it is meant to be copied and adapted.
 
-**Scope.** This project is for very small businesses: under 20 employees, using the size categories of the article cited below
-(**nano**: fewer than 5; **micro**: 5 to 9; **mini**: 10 to 19). A company of one is a nano business, the most common kind. Larger organizations (many systems,
-sampling, role-based interviews) are deliberately out of scope for now. The profile is meant to stay small enough for
-an owner to fill in once, in about twenty minutes.
+**Scope.** This project is for very small businesses: under 20 employees, using the size categories of the article cited below (**nano**: fewer than 5; **micro**: 5 to 9; **mini**: 10 to 19). A company of one is a nano business, the most common kind. Larger organizations (many systems, sampling, role-based interviews) are deliberately out of scope for now. The profile is meant to stay small enough for an owner to fill in once, in about twenty minutes.
 
 ## Who this is for: the data
 
-The size categories and numbers below come from the peer-reviewed article D. E. Shannon, "Technical Ways to Lower Cybersecurity Costs for Small
-Businesses", *Journal of Contract Management*, Vol. 18 (2023-2024), pp. 5-21 (Table 2 draws on the Federal Procurement
-Data System and the U.S. Department of Labor). They describe the **small businesses that contract with the Department of
-Defense**; civilian-agency contractors are not covered.
+The size categories and numbers below come from the peer-reviewed article D. E. Shannon, "Technical Ways to Lower Cybersecurity Costs for Small Businesses", *Journal of Contract Management*, Vol. 18 (2023-2024), pp. 5-21 (Table 2 draws on the Federal Procurement Data System and the U.S. Department of Labor). They describe the **small businesses that contract with the Department of Defense**; civilian-agency contractors are not covered.
 
 | Category | Employees per firm | Firms | Share of firms | Total employees | Average employees |
 |---|---|---|---|---|---|
@@ -34,37 +25,24 @@ Defense**; civilian-agency contractors are not covered.
 | Big small | 500 or more | 528 | 6% | 367,947 | 696 |
 | **Total** | | **9,336** | 100% | **511,629** | 55* |
 
-\* Computed from the totals (511,629 / 9,336). The article's printed table gives 45 for the total row; every other row's
-average matches its own totals.
+\* Computed from the totals (511,629 / 9,336). The article's printed table gives 45 for the total row; every other row's average matches its own totals.
 
-**77% of these firms have fewer than 20 employees** (the article's definition of a *very small business*), and the typical
-nano firm has fewer than two. So the most common company this tool serves is one where the owner is also the
-administrator and the security lead; the profile should make that easy to say, and the assessor should treat it as normal,
-not as a defect.
+**77% of these firms have fewer than 20 employees** (the article's definition of a *very small business*), and the typical nano firm has fewer than two. So the most common company this tool serves is one where the owner is also the administrator and the security lead; the profile should make that easy to say, and the assessor should treat it as normal, not as a defect.
 
-The article also gives the economics: average revenue of about $347,000 for 1 to 4 employees, $1.08 million for 5 to 9 and
-$2.16 million for 10 to 19, against estimated compliance costs of $35,000 or more at the start, about $20,000 for a third-party
-assessment every three years, and $150 to $200 per employee per month to maintain (2023 estimates). Those figures are why
-cost is a design goal here: the article estimated that open templates and AI could remove about $10,000 of the initial cost.
+The article also gives the economics: average revenue of about $347,000 for 1 to 4 employees, $1.08 million for 5 to 9 and $2.16 million for 10 to 19, against estimated compliance costs of $35,000 or more at the start, about $20,000 for a third-party assessment every three years, and $150 to $200 per employee per month to maintain (2023 estimates). Those figures are why cost is a design goal here: the article estimated that open templates and AI could remove about $10,000 of the initial cost.
 
 ### How to read these numbers
 
-**What the data covers.** Prime contractors to the Department of Defense and the defense industrial base, in 2023-era data.
-It does not include subcontracts, and it does not include civilian agencies. "Employees" is not the same as "people who use
-the systems".
+**What the data covers.** Prime contractors to the Department of Defense and the defense industrial base, in 2023-era data. It does not include subcontracts, and it does not include civilian agencies. "Employees" is not the same as "people who use the systems".
 
 **The author's context** (judgment from 35 years of experience in government contracting; **not measured**):
 
 - The figures are *directionally correct* for government contracts as a whole.
-- This class of business has a **more pronounced presence in subcontracts**, which the article did not count, so very small
-  firms are probably under-represented in the table.
-- The **nano class is probably better represented among civilian agencies** (conjecture). Civilian agencies tend to buy
-  smaller-value procurements and make set-asides for local small businesses more often.
+- This class of business has a **more pronounced presence in subcontracts**, which the article did not count, so very small firms are probably under-represented in the table.
+- The **nano class is probably better represented among civilian agencies** (conjecture). Civilian agencies tend to buy smaller-value procurements and make set-asides for local small businesses more often.
 
-Treat the table as the best published picture, and the context as a reasoned expectation about what is missing from it. The
-profile is built so this can be checked rather than assumed: every contract records its agency group (`agency_group`)
-and whether it is a prime contract or a subcontract (`vehicle`), so the real mix among the people who use this tool can
-be counted if anyone ever wants to. Sharing anonymous counts is possible later but not planned (see Out of scope).
+Treat the table as the best published picture, and the context as a reasoned expectation about what is missing from it. The profile is built so this can be checked rather than assumed: every contract records its agency group (`agency_group`)
+and whether it is a prime contract or a subcontract (`vehicle`), so the real mix among the people who use this tool can be counted if anyone ever wants to. Sharing anonymous counts is possible later but not planned (see Out of scope).
 
 ## The national picture (Census) and why it matters now
 
@@ -80,28 +58,38 @@ Businesses (SUSB), 2021, national table "Number of Firms and Establishments", em
 | 20 or more | 626,726 | 10.0% |
 | **All employer firms** | **6,294,604** | 100% |
 
-**Fewer than 10 employees: 79.9% (nearly 8 in 10). Fewer than 20: 90.0% (9 in 10).** These count firms with
-paid employees only; the many millions of businesses with no employees at all are not in this table.
+**Fewer than 10 employees: 79.9% (nearly 8 in 10). Fewer than 20: 90.0% (9 in 10).** These count firms with paid employees only; the many millions of businesses with no employees at all are not in this table.
 
-Set beside the article's DoD figures (53% nano, 14% micro, 10% mini; 77% under 20), defense contractors are somewhat
-**less** concentrated in the smallest sizes than firms nationally, which is consistent with the article's concern that
-cost keeps very small firms out of the defense industrial base. (Different populations: all employer firms, versus
-small businesses that hold DoD prime contracts.)
+Set beside the article's DoD figures (53% nano, 14% micro, 10% mini; 77% under 20), defense contractors are somewhat **less** concentrated in the smallest sizes than firms nationally, which is consistent with the article's concern that cost keeps very small firms out of the defense industrial base. (Different populations: all employer firms, versus small businesses that hold DoD prime contracts.)
 
-**The recent CMMC pause.** On 13 July 2026 the Department of War paused Phase 2 of CMMC, the requirement for a
-third-party Level 2 certification as a condition of award that had been due on 10 November 2026, and began a review
-aimed at lowering barriers for small and non-traditional businesses. The Small Business Administration's statement
-([sba.gov](https://legacy.sba.gov/article/2026/07/13/sba-commends-us-department-wars-suspension-cmmc-phase-ii-small-defense-contractors))
-cites cost, including an estimate of $593,800 per certification for small firms needing a third-party assessment, and more than
-100,000 small businesses affected. The same reports say Phase 1 self-assessments and the DFARS obligations remain in effect.
+**The recent CMMC pause.** On 13 July 2026 the Department of War paused Phase 2 of CMMC, the requirement for a third-party Level 2 certification as a condition of award that had been due on 10 November 2026, and began a review aimed at lowering barriers for small and non-traditional businesses. The Small Business Administration's statement ([sba.gov](https://legacy.sba.gov/article/2026/07/13/sba-commends-us-department-wars-suspension-cmmc-phase-ii-small-defense-contractors)) cites cost, including an estimate of $593,800 per certification for small firms needing a third-party assessment, and more than 100,000 small businesses affected. The same reports say Phase 1 self-assessments and the DFARS obligations remain in effect.
 That is the situation this project is built for: a small company that must assess itself, honestly and cheaply, with
 evidence. Facts in this paragraph are as reported by the SBA; check current status before relying on them.
 
+## What has to be protected: FCI and CUI
+
+The FAR and the DFARS do not ask the same of a contractor, and the level of protection also depends on the sensitivity of
+the information: **federal contract information (FCI)** or **controlled unclassified information (CUI)**. Basic safeguarding
+for FCI is a lighter standard than the NIST SP 800-171 requirements that come with CUI. So each contract records what kind of
+information it brings (`information = FCI | CUI | both | unknown`), alongside the clauses that say so.
+
+**The highest level applies to the whole organization.** From the author's perspective, if even one contract specifies that
+CUI rules apply, the organization needs to comply with CUI **across the board**; the author sees a similar premise in how Cost
+Accounting Standards are implemented. The design follows that: the level the assessor works to is the highest level among
+the company's contracts (FCI only, or CUI), and for a company of this size it is assessed for the whole organization by
+default.
+
+Some companies limit CUI to a defined enclave instead. The profile can describe that (`in_boundary` and `boundary_note`), and
+the assessor would then assess the enclave. Whether a narrower boundary is acceptable is for the contract and the assessor to
+decide, not for this tool.
+
+What this means for the checklist: CUI selects an 800-171 checklist (which revision depends on the contract, below). A company
+whose contracts bring only FCI would need the basic safeguarding checklist, **which this project does not have yet**; only
+the two 800-171 checklists exist.
+
 ## The contracts decide the checklist
 
-Which revision of 800-171 applies is set by the **contract**, not by the company. A business may hold contracts that
-point at different revisions, so the profile lists every contract or subcontract that brings controlled information,
-and the assessor works out which checklists to run.
+Which revision of 800-171 applies is set by the **contract**, not by the company. A business may hold contracts that point at different revisions, so the profile lists every contract or subcontract that brings controlled information, and the assessor works out which checklists to run.
 
 | Agency group | Revision (owner's working assumption, 2026-10-06) | How to treat it |
 |---|---|---|
@@ -152,23 +140,15 @@ contracts carry which revision, so those stay owner-supplied.
 
 It is used three ways:
 
-1. **Seeding.** `[business]` is proposed from the statement and the owner confirms or corrects every value. Nothing is
-   accepted silently.
-2. **A claims check.** A statement such as "configured to meet FAR requirements" is a public claim. The assessor lists
-   each security claim it finds and compares it with the assessment result, so a company sees where its own marketing is
-   ahead of its evidence.
-3. **The prime-contractor summary.** A short summary a prime can ask a subcontractor for: business identity, the
-   contracts and revisions that apply, the overall result per contract, and the claims check, drawn from the profile and
-   the latest assessment. The company decides what to send.
+1. **Seeding.** `[business]` is proposed from the statement and the owner confirms or corrects every value. Nothing is accepted silently.
+2. **A claims check.** A statement such as "configured to meet FAR requirements" is a public claim. The assessor lists each security claim it finds and compares it with the assessment result, so a company sees where its own marketing is ahead of its evidence.
+3. **The prime-contractor summary.** A short summary a prime can ask a subcontractor for: business identity, the contracts and revisions that apply, the overall result per contract, and the claims check, drawn from the profile and the latest assessment. The company decides what to send.
 
 The statement's identifiers (registration numbers, phone, email) stay on the machine and are never sent to the AI.
 
 ## Outside parties
 
-An outside party is listed **only when it has hands on the systems**, remote (tunnelling in) or on site, with the
-systems it covers and where its obligations are written. A cloud or software service that merely hosts data is not an
-outside party in this sense; it is described as a system, with the provider's authorization level if a contract asks
-for one.
+An outside party is listed **only when it has hands on the systems**, remote (tunnelling in) or on site, with the systems it covers and where its obligations are written. A cloud or software service that merely hosts data is not an outside party in this sense; it is described as a system, with the provider's authorization level if a contract asks for one.
 
 ## Size is private, and the profile is honest
 
@@ -188,46 +168,35 @@ Two rules follow:
 ## What the AI sees, and what it does not
 
 The profile holds sensitive business facts (contract names, clauses, who holds which role). The assessor builds a
-short **assessment context** from it for the AI: size band, role model, system kinds and whether each is outsourced,
-and which revisions to assess. It **never** passes contract names, numbers, clauses, prime or subcontractor names,
-or the company name. The profile file itself sits where the sandbox blocks the AI from reading it, like the answer keys.
+short **assessment context** from it for the AI: size band, role model, system kinds and whether each is outsourced, and which revisions to assess. It **never** passes contract names, numbers, clauses, prime or subcontractor names, or the company name. The profile file itself sits where the sandbox blocks the AI from reading it, like the answer keys.
 
 ## File format
 
-Plain **INI**: sections in square brackets (`[organization]`), `key = value` lines, `#` notes and `;` notes at the end
-of a line. Repeating things (contracts, systems) are numbered or named sections (`[contract.1]`, `[system.server1]`).
+Plain **INI**: sections in square brackets (`[organization]`), `key = value` lines, `#` notes and `;` notes at the end of a line. Repeating things (contracts, systems) are numbered or named sections (`[contract.1]`, `[system.server1]`).
 
-Why INI: it is readable and editable in any text editor, allows comments (a form people can understand), and is parsed
-by Python's standard library on every supported version. Considered and rejected: JSON (no comments, unfriendly to
-edit), YAML (needs an extra package), TOML (needs Python 3.11 or later; this tool runs on the Mac's built-in Python),
-a sheet inside the measurement register (changes NIST's template).
+Why INI: it is readable and editable in any text editor, allows comments (a form people can understand), and is parsed by Python's standard library on every supported version. Considered and rejected: JSON (no comments, unfriendly to edit), YAML (needs an extra package), TOML (needs Python 3.11 or later; this tool runs on the Mac's built-in Python), a sheet inside the measurement register (changes NIST's template).
 
-A friendly checker will validate the file and explain problems in plain words ("`required_revision` must be 2, 3 or
-unspecified"). Anything blank means unknown, and unknown stays unknown in the report.
+A friendly checker will validate the file and explain problems in plain words ("`required_revision` must be 2, 3 or unspecified"). Anything blank means unknown, and unknown stays unknown in the report.
 
 ## Privacy
 
-`profile.ini` is private: it is in `.gitignore`, the sandbox blocks the AI from reading it, and only the example ships
-in the repository.
+`profile.ini` is private: it is in `.gitignore`, the sandbox blocks the AI from reading it, and only the example ships in the repository.
 
 ## Out of scope for now
 
-Sampling across many systems, role-based interviews, per-department owners and trend reporting. Also not planned:
-voluntary sharing of anonymous counts (size band, agency group, prime or subcontract) among adopters; this is a reference
-system, so there is no production user base to count. They matter for
+Sampling across many systems, role-based interviews, per-department owners and trend reporting. Also not planned: voluntary sharing of anonymous counts (size band, agency group, prime or subcontract) among adopters; this is a reference system, so there is no production user base to count. They matter for
 larger organizations and are left for a later version if the community asks.
 
-## Future work: contracts are more than contracts
+## Finding the contracts: scan a folder first, type the rest
 
-Not built, and not planned for the first version. It matters enough to record now. The profile's `[contract.N]` section
-assumes something simple: an agreement with a number and some clauses. Real business is messier. A later version that
-**prefills the contract list by searching a folder of the company's own documents** (for example a shared folder in a
-private cloud) would have to cope with all of it.
+The utility should **offer to scan a folder** that the owner names (for example a shared folder in a private cloud) and
+propose the contract list from what it finds, instead of making the owner type every entry. Anything it misses can be keyed
+in later, and manual entry always works. The scan is an offer, not a requirement. It is harder than it sounds, because real
+business paper is messy:
 
 **"Contract" covers many instruments**
 
-- Formal Government contracts, with numbers such as 123456-12-D-1234, with or without an alphabetic prefix (AF, FA, DA and
-  others).
+- Formal Government contracts, with numbers such as 123456-12-D-1234, with or without an alphabetic prefix (AF, FA, DA and others).
 - Subcontracts, many of which do not name the prime contract they support.
 - Purchase orders and other ordering instruments.
 - Consulting agreements.
@@ -249,16 +218,32 @@ private cloud) would have to cope with all of it.
   confirms it, as with the capability-statement seeding. Nothing is accepted silently.
 - Contract documents are sensitive. The search would run on the owner's own machine, results would go only into the private
   profile, and the AI would see nothing beyond what the profile already allows.
-- The `[contract.N]` section would probably need more fields: the kind of instrument; the reference (which may be absent);
+- The `[contract.N]` section would probably need more fields: the kind of instrument; the information type (FCI, CUI, both,
+  unknown); the reference (which may be absent);
   whether the prime is known; where the duty comes from (clauses, an agreement, or something else); the CUI categories and
   dissemination controls; and export-control status (ITAR, EAR, none, unknown).
 - The rule that the contract decides the revision still holds, but a short flow-down clause or a non-disclosure agreement
   may not state a revision at all. That is the `unspecified` / `assumed` case already in this design.
+**How the scan would likely work**
+
+- It runs on the owner's own machine and matches patterns in the text: contract and order numbers (with or without agency
+  prefixes), clause references (FAR 52.204-21, DFARS 252.204-70xx and similar), and words such as "Controlled Unclassified
+  Information", "Federal Contract Information", "ITAR", "EAR" and "non-disclosure". Plain pattern matching comes first: it is
+  explainable and sends nothing anywhere. A local model could help later.
+- Documents are grouped under a contract number when one is found, and a modification stays with its base contract. A
+  document with no number gets an entry of its own for the owner to name.
+- Word, Markdown and plain text files come first. PDFs need a reader, and scanned images with no text cannot be read, so
+  they are listed as "needs a person".
+- The result is a list of proposals, each with the source file, what was found and a confidence level. The owner accepts,
+  edits or rejects each one, then adds anything missing by hand.
+
 - This is a complex topic, and the first version would get parts of it wrong. The people who use it will see more cases than
   one author can.
 
 ## Open questions
 
+0. **The FCI-only checklist.** A company whose contracts bring only FCI needs the basic safeguarding requirements, and this project
+   has no checklist for them yet. Which source should it be built from, and should it live here or be linked?
 1. Which capability-statement formats should the seeding step read first? Word, Markdown and plain text need no extra software; PDF would need a reader.
 2. Should the prime-contractor summary be a one-page document, a form, or both?
 3. What counts as "hands on" for an outside party? Remote tunnel and on-site are in; is a screen-sharing help desk session in?
