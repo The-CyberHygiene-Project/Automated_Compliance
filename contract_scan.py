@@ -57,8 +57,10 @@ DISSEMINATION = ("NOFORN", "FEDCON", "NOCON", "FED ONLY", "DL ONLY", "REL TO", "
 _ALL = ("ITAR", "EAR", "EXPT")
 ADDITIONAL_REQUIREMENTS = [
     {"id": "dd_form_2345", "status": "owner", "applies": _ALL,
-     "text": "DD Form 2345 joint agreement (US and Canada Joint Certification Program) for access to export-controlled technical data",
-     "ask": "Do you hold a current DD Form 2345 certification?"},
+     "text": ("DD Form 2345, the Militarily Critical Technical Data Agreement: the application for Joint Certification Program (US and Canada) "
+              "certification, which lets a facility with a CAGE code receive export-controlled unclassified technical data (as reported: valid "
+              "for five years, and it names a data custodian)"),
+     "ask": "Do you hold a current DD Form 2345 (Joint Certification Program) certification, and when does it expire?"},
     {"id": "us_persons_only", "status": "to_vet", "applies": _ALL,
      "text": "Access to the export-controlled information is limited to U.S. persons, including administrators and outside IT support",
      "ask": "Is access limited to U.S. persons?"},
@@ -422,7 +424,11 @@ def _export_section(props):
         group = [r for r in items if r["status"] == status]
         if group and heading:
             out.append(heading)
-        out += [f"{r['id']} = unknown   ; yes | no | unknown. {r['ask']}" for r in group]
+        for r in group:
+            out.append(f"{r['id']} = unknown   ; yes | no | unknown. {r['ask']}")
+            if r["id"] == "dd_form_2345":                      # the certification is tied to a facility, runs five years and names a custodian
+                out += ["dd_form_2345_expires =   ; the date the certification expires (as reported, valid for five years)",
+                        "data_custodian =   ; the person named on the form as responsible for the controlled data"]
     return out + [""]
 
 

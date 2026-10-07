@@ -437,3 +437,27 @@ def test_export_control_terms_do_not_silently_raise_the_level(tmp_path):
     # commercial terms that mention ITAR/EAR are not proof the data held is export controlled: the owner confirms
     (tmp_path / "po.txt").write_text("PURCHASE ORDER 77. Comply with ITAR and EAR.")
     assert cs.scan_folder(tmp_path)[0]["information"] == "unknown"
+
+
+# ---- the DD Form 2345 is the application for the Joint Certification Program (owner, 2026-10-07; details as reported)
+def test_the_dd_form_2345_item_names_the_joint_certification_program_and_asks_about_expiry():
+    item = next(r for r in cs.ADDITIONAL_REQUIREMENTS if r["id"] == "dd_form_2345")
+    assert "Militarily Critical Technical Data Agreement" in item["text"] and "Joint Certification Program" in item["text"]
+    assert "expire" in item["ask"].lower() and item["ask"].endswith("?")
+
+
+def test_the_export_section_records_the_certification_expiry_and_the_data_custodian(tmp_path):
+    (tmp_path / "a.txt").write_text("AWARD/CONTRACT FA9453-19-C-0500. ITAR applies.")
+    ini = cs.proposals_to_ini(cs.scan_folder(tmp_path))
+    import configparser
+    c = configparser.ConfigParser(inline_comment_prefixes=(";",), interpolation=None)
+    c.read_string(ini)
+    sec = c["export_controls"]
+    assert sec["dd_form_2345"] == "unknown" and sec["dd_form_2345_expires"] == "" and sec["data_custodian"] == ""
+    assert list(sec).index("dd_form_2345_expires") == list(sec).index("dd_form_2345") + 1          # kept beside the item they belong to
+
+
+def test_no_certification_fields_when_nothing_export_controlled_was_found(tmp_path):
+    (tmp_path / "a.txt").write_text("AWARD/CONTRACT FA9453-19-C-0500 DFARS 252.204-7012")
+    ini = cs.proposals_to_ini(cs.scan_folder(tmp_path))
+    assert "dd_form_2345_expires" not in ini and "data_custodian" not in ini

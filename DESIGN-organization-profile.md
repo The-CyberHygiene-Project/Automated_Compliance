@@ -110,7 +110,7 @@ these obligations belong to the company. The assessment lists them **apart from 
 
 | Item | Named by | Status |
 |---|---|---|
-| DD Form 2345 joint agreement (US and Canada) for access to export-controlled technical data | the author | in use |
+| DD Form 2345 (Militarily Critical Technical Data Agreement), the application for Joint Certification Program certification (US and Canada) | the author | in use |
 | Access limited to U.S. persons, including administrators and outside IT support | summary | **to vet** |
 | Stored in the U.S., or protected by end-to-end encryption with FIPS-validated cryptography whose keys no foreign person holds | summary | **to vet** |
 | People, visitors and vendors screened against restricted-party lists | summary | **to vet** |
@@ -118,6 +118,20 @@ these obligations belong to the company. The assessment lists them **apart from 
 | Registration with the State Department's Directorate of Defense Trade Controls, if the company manufactures, exports or brokers (ITAR only) | summary | **to vet** |
 | A Technology Control Plan | summary | **to vet** |
 | The USML category (ITAR) or ECCN (EAR) of the information held is known | summary | **to vet** |
+
+**The DD Form 2345 and the Joint Certification Program.** DD Form 2345 is the application for certification under the Joint
+Certification Program (JCP), the US and Canadian program that certifies a company to receive unclassified, export-controlled
+technical data (drawings, software and controlled attachments). As reported by the summaries the author supplied, and **not yet
+checked against the program's own pages** (which block automated access):
+
+- The certification is tied to a **specific facility and its CAGE code**, and it runs for **five years** before renewal. The profile
+  therefore records an expiry date (`dd_form_2345_expires`) so the tool can warn before it lapses.
+- The form names a **data custodian** who answers for handling and access. The profile records that person (`data_custodian`).
+- The certification is what lets a company see restricted attachments on the platforms that distribute them. One of the public
+  solicitations used to test the scan says its CUI "will be made available through an access request", which is the kind of place this
+  matters. That is an example, not a rule the tool applies.
+- The summaries also say that applying or renewing requires an 800-171 self-assessment score recorded in the Supplier Performance Risk
+  System. If that is right it joins this project's assessment directly to the certification; the author is asked to confirm it.
 
 "To vet" items come from a secondary summary, not from the regulations, and some of them are stated more strictly there than the
 rules are (for example United States storage, registration and a technology control plan each depend on what the company does).
