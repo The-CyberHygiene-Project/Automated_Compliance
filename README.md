@@ -9,9 +9,10 @@ Everything runs on one Mac with a local model: no assessment text leaves the mac
 
 > **A reference system for research and development**, not a production assessment service.
 >
-> **Status: early.** One real requirement has been assessed end to end on Rev 3, and a full run is in progress.
-> The method works; the results are not yet validated. Treat everything here as a working tool, not an
-> assessment authority. It does not say what a contract requires, and it is not legal advice.
+> **Status: early.** A full Rev 3 run has been completed on one reference system, along with a calibration run
+> that tests a stricter rule. The method works; the results are not yet validated, and the model has been shown
+> to lean lenient (see Limits). Treat everything here as a working tool, not an assessment authority. It does
+> not say what a contract requires, and it is not legal advice.
 
 ## Why this exists
 
@@ -33,6 +34,8 @@ the test harness for both questions.
 4. **The runner checks the record.** Every objective needs a status (Met, Unmet, N/A, Not checkable), a source
    and evidence. A short or malformed record is sent back, never accepted.
 5. **A grader compares with your own key.** The key is yours and stays outside the repository.
+6. **An optional organization profile tailors the run** (below). It holds your own statements of fact, stays
+   on your machine, and is never shown to the AI: the AI receives only a short context built from it.
 
 More detail in [METHOD.md](METHOD.md). What went wrong along the way, and the fixes, in
 [LESSONS.md](LESSONS.md).
@@ -50,6 +53,27 @@ Rev 3 adds **parameter objectives**: each organization-defined value (a time per
 defined. The AI marks such an objective Met only when a document states the actual value, and quotes it. The
 unmet ones become a to-do list for the organization.
 
+## Tailoring to the organization (profile and contract scan)
+
+A one-person company and a 200-person company should not be assessed the same way. This tool is aimed at **very small
+businesses (under 20 employees)**, and a plain-text profile says what makes yours different.
+
+- **`profile.example.ini`** is the template; copy it to `profile.ini` (git-ignored, never published) and fill it in.
+  Blank means unknown, and unknown stays unknown.
+- **`org_profile.py`** loads and checks it in plain words (`python3 org_profile.py profile.ini`): the size band
+  is worked out from the employee count, each contract's revision comes from the contract (or is marked *assumed*),
+  and the DD Form 2345 expiry date draws warnings at 90 and 30 days.
+- **The AI sees only a few facts**: the size band, whether anyone besides the owner has access (`other_personnel`),
+  the role answers, and the revisions to assess. Never contract names, clauses, hosts, or counts. Set
+  `ORG_PROFILE=<profile.ini>` when you run `assess.sh`; the context is built outside the sandbox.
+- **N/A needs a reason.** With a profile, an objective can be marked N/A only when a stated fact shows it cannot
+  apply, and the reason must name that fact.
+- **`contract_scan.py`** reads a folder of your own contract documents and *proposes* contract entries (agency,
+  instrument type, the protection clauses and their dates, FCI or CUI, export-control markers). It decides nothing:
+  you confirm every line.
+
+The reasoning, sources and open questions are in [DESIGN-organization-profile.md](DESIGN-organization-profile.md).
+
 ## What is in the repository
 
 | Path | What it is |
@@ -60,6 +84,9 @@ unmet ones become a to-do list for the organization.
 | `grade.py`, `grade_r3.py` | Graders for Rev 2 and Rev 3 |
 | `key_r3.py` | Builds the provisional Rev 3 key from your Rev 2 results and NIST's mapping |
 | `fill_register.py` | Writes results into a copy of the Rev 3 measurement register (below) |
+| `org_profile.py`, `profile.example.ini` | The organization profile: loader, checker, and the context the AI may see |
+| `contract_scan.py` | Proposes contract entries from a folder of contract documents (never decides) |
+| `DESIGN-organization-profile.md` | Design note: size bands, FCI and CUI, export controls, how contracts choose the checklist |
 | `templates/NIST_800-171r3_Measurement_Register.xlsx` | **A blank Rev 3 measurement register** (see below) |
 | `objectives.md`, `kit-r3/` | The objective lists (NIST data, generated mechanically) |
 | `objectives.lettered-only-297.md` | An earlier Rev 2 list that lacked the 23 single-objective requirements; kept for comparison |
@@ -120,6 +147,10 @@ reference/fetch_nist_data.sh                     # NIST's public data files
 mkdir docs                                       # a read-only copy of your compliance documents
 TARGET=<ssh alias> ./assess.sh --only 3.1.1      # try one Rev 2 requirement
 REV=3 TARGET=<ssh alias> ./assess.sh             # the full Rev 3 run (many hours; resumable)
+cp profile.example.ini profile.ini               # optional: describe your organization, then check it
+python3 org_profile.py profile.ini
+ORG_PROFILE=profile.ini REV=3 TAG=profile TARGET=<ssh alias> ./assess.sh   # the run, with the profile; TAG = a new results folder
+STRICT=1 REV=3 TARGET=<ssh alias> ./assess.sh --only <requirements>        # calibration: a policy proves "defined", not "implemented"
 ```
 
 Keep the folder outside `~/Desktop` and `~/Documents` (the sandbox blocks those). Keep answer keys in
@@ -127,7 +158,10 @@ Keep the folder outside `~/Desktop` and `~/Documents` (the sandbox blocks those)
 
 ## Limits, stated plainly
 
-- A local model can be lenient: in the first trial it marked some partly-met objectives Met.
+- A local model can be lenient: in the first trial it marked some partly-met objectives Met. A stricter rule
+  (`STRICT=1`: a written policy proves an objective is *defined*, not *implemented*) moved many of them, but stricter
+  is not automatically more correct: in the calibration run some answers became blanket "no evidence" entries. Review
+  them; do not adopt a rule only because it agrees with your key.
 - Requirement-level agreement with a key says little about objective-level accuracy.
 - Interviews, physical checks and training records cannot be judged from a server and documents; the AI should
   say "Not checkable".
