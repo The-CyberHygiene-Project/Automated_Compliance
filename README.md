@@ -86,6 +86,8 @@ The reasoning, sources and open questions are in [DESIGN-organization-profile.md
 | `fill_register.py` | Writes results into a copy of the Rev 3 measurement register (below) |
 | `org_profile.py`, `profile.example.ini` | The organization profile: loader, checker, and the context the AI may see |
 | `contract_scan.py` | Proposes contract entries from a folder of contract documents (never decides) |
+| `triage.py` | Sorts the open items of a filled register into parameter, document, configuration and not-checkable gaps (read-only) |
+| `poam.py` | Exports those open items as a draft OSCAL plan of action and milestones (JSON, validated against NIST's schema) |
 | `DESIGN-organization-profile.md` | Design note: size bands, FCI and CUI, export controls, how contracts choose the checklist |
 | `templates/NIST_800-171r3_Measurement_Register.xlsx` | **A blank Rev 3 measurement register** (see below) |
 | `objectives.md`, `kit-r3/` | The objective lists (NIST data, generated mechanically) |

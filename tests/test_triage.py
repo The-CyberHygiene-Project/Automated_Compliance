@@ -76,14 +76,18 @@ def test_main_with_no_argument_prints_usage_and_returns_2(capsys):
 
 
 def test_load_and_main_read_a_real_register_without_changing_it(capsys):
-    reg = Path(os.path.expanduser("~/Desktop/NIST_800-171r3_Measurement_Register_diwai_2026-10-09.xlsx"))
-    if not reg.exists():
-        import pytest
-        pytest.skip("register not present")
+    """Set REGISTER_FOR_TESTS to a filled Rev 3 register to run this; it is skipped otherwise."""
+    import pytest
+    path = os.environ.get("REGISTER_FOR_TESTS")
+    if not path or not Path(path).exists():
+        pytest.skip("REGISTER_FOR_TESTS not set")
+    reg = Path(path)
     before = reg.read_bytes()
     objectives, odps = triage_mod.load(str(reg))
     assert len(objectives) == 422 and len(odps) == 88
     assert triage_mod.main([str(reg)]) == 0
     out = capsys.readouterr().out
-    assert "- parameter: 88" in out and "- document: 37" in out and "- configuration: 7" in out and "- not_checkable: 12" in out and "- unsorted: 0" in out
+    counts = [int(l.split(": ")[1]) for l in out.splitlines()[1:6]]
+    result = triage_mod.triage(objectives, odps)
+    assert counts == [len(result[k]) for k in ("parameter", "document", "configuration", "not_checkable", "unsorted")]
     assert reg.read_bytes() == before

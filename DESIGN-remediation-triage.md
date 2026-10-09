@@ -1,6 +1,6 @@
 # Design note: remediation triage (draft for comment)
 
-**Status:** draft, not built. Nothing here changes the assessor, the allow-list or any host.
+**Status:** steps 1 and 2 are built ([`triage.py`](triage.py), [`poam.py`](poam.py)); steps 3 and 4 are not. Nothing here changes the assessor, the allow-list or any host.
 
 ## Why
 
