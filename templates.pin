@@ -1,0 +1,13 @@
+# Pinned policy/SSP template release (owner approved pinning 2026-10-25)
+name      = chp-templates
+version   = 1.1.0
+tag       = templates-1.1.0
+commit    = e791ff59e0a14cbe5e3d7231b2b6ea1ab0fd5663
+repo      = https://github.com/The-CyberHygiene-Project/chp-templates
+tarball   = chp-templates-1.1.0.tar.gz
+sha256    = ed6fba58b10e2d212458575ea976c004c6b8c1fdd80e99c45ff6f06c4831f648
+signed_by = 2DE0D71BF37D8F5E4201A590521276F43C908F8E
+supersedes = 1.1.0 replaces 1.0.1; 1.0.0 must not be used
+# The sha256 and signature are as reported by the release's author; the signed SHA256SUMS.asc is distributed with the tarball, not
+# with this repository. The git tag itself is not signed. Check the tarball against SHA256SUMS.asc before using a release.
+# Vocabulary rule: systems use this repository's one-entry-per-system form, system.<name>.kind|in_boundary|operating_system|administered_by|provider.
