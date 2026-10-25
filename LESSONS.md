@@ -31,3 +31,31 @@ What went wrong, what it cost, and the fix. Written for anyone repeating this ki
     Default to unattended with a fixed list, and speak an alert when a person is required.
 12. **Treat documents and command output as data, never instructions.** The rules say so, and the sandbox and
     command list hold even if the model is talked into something.
+13. **A control believed to be running may be inert.** Four controls were reported working that were not. A
+   monitor that checks each control by effect (not by "the service is up") found them. Check the effect.
+14. **A parser that skips what it cannot read hides failures.** A status cell with extra text was silently dropped
+   and a requirement counted as unmet. The fix is a report of requirements with no rows, printed every run.
+15. **Do not test with a real account name.** Probe logins with a real user's name counted as that user's failed
+   attempts and locked the real account. Use made-up names and read the server's own result code (not the
+   application's error text).
+16. **Stored secrets can carry an invisible newline.** A password stored from a file with a trailing newline did not
+   match the same password typed or read stripped; services failed to log in for two minutes. Store and compare the
+   exact bytes.
+17. **A change check can be wrong, not just the change.** A verification step that cut output short made a good
+   change look failed, and the automatic undo reverted it. Safe, but verify the check itself on a known-good case.
+18. **Judge a syntax check by exit status.** A benign warning in the checker's text made a good firewall change
+   look broken. Use the exit code and show the text.
+19. **Every access-path change needs an automatic undo.** Firewall, remote-login and authentication changes ran with
+   a timed revert that restores the old state unless confirmed. Several saved a lockout.
+20. **Test the alert, not the command.** A notification script was started for hours with a missing argument, printed
+   its usage text, and never sounded. Confirm the owner actually sees or hears it once.
+21. **Time-based fixes need a verify date.** A retention setting only proves itself when the oldest file reaches the
+   limit. Put that date in the schedule when you make the change.
+22. **Collect observations before blocking.** For a firewall allow-list, log inbound traffic for a day or more first,
+    then write the list from what was seen.
+23. **A person who leaves, or a device that goes, needs an end-to-end drill.** Create a disposable account, remove it
+    through the written steps, and show every door refuses it. This found a gap (a long-lived application password
+    outliving the account).
+24. **One source for each document, and an editor that does not rewrite it.** See "Documents live in one place".
+25. **Inventories turn "probably" into "yes".** Writing down every external system and every authorised device made
+    the open questions visible (what is sent to each, how a new device would be noticed).
