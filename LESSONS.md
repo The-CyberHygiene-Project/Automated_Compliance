@@ -59,3 +59,11 @@ What went wrong, what it cost, and the fix. Written for anyone repeating this ki
 24. **One source for each document, and an editor that does not rewrite it.** See "Documents live in one place".
 25. **Inventories turn "probably" into "yes".** Writing down every external system and every authorised device made
     the open questions visible (what is sent to each, how a new device would be noticed).
+26. **A search tool for a small local model must not demand an exact phrase.** A read-only file search that
+    matched only the whole phrase returned nothing for natural queries, and the model rephrased and retried until
+    it looked like a loop. It was not a context limit. Matching files that contain all the words, in any order, and
+    saying plainly "do not repeat this search; try one distinctive word or search by file name" ended it.
+27. **A system used in bursts will show gaps; the test is recovery.** After several idle days, two scheduled-job
+    checks went red together. Both traced to one planned maintenance window and cleared on the next scheduled run.
+    Judge a monitor on whether it notices a gap and the jobs recover, and record the window as planned, not as an
+    incident.
