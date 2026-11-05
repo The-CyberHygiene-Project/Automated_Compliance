@@ -7,6 +7,8 @@ status and its evidence for every assessment objective. The AI makes the judgmen
 hands over one requirement at a time, enforces what the AI may do, and checks that the record is complete.
 Everything runs on one Mac with a local model: no assessment text leaves the machine.
 
+A second, optional loop, in design, takes the failing checks of a monitor, gathers facts with an approved command catalog, diagnoses them, and proposes a repair that a person must approve (see [DESIGN-diagnosis-and-repair.md](DESIGN-diagnosis-and-repair.md)).
+
 > **A reference system for research and development**, not a production assessment service.
 >
 > **Status: early.** A full Rev 3 run has been completed on one reference system, along with a calibration run
@@ -20,6 +22,8 @@ Assessing a system against 800-171A means judging 300-plus objectives with evide
 in documents (policies, plans, records), and some is on the system itself. A local model can read both. The
 open questions are whether it judges well, and whether it can be kept safe while it does. This repository is
 the test harness for both questions.
+
+Assessing finds what is wrong; people also need the next steps (gather facts, diagnose, fix), and they need them when the network is impaired. The same local-model discipline is being extended to diagnosis and repair, with approval gates set by risk.
 
 ## How it works
 
@@ -36,6 +40,9 @@ the test harness for both questions.
 5. **A grader compares with your own key.** The key is yours and stays outside the repository.
 6. **An optional organization profile tailors the run** (below). It holds your own statements of fact, stays
    on your machine, and is never shown to the AI: the AI receives only a short context built from it.
+7. **The assessor never changes a host.** The diagnosis and repair loop is separate: read-only (tier 1) commands from an
+   approved catalog run on their own within a step limit; anything that could damage the system or irreversibly change a
+   file waits for a person.
 
 More detail in [METHOD.md](METHOD.md). What went wrong along the way, and the fixes, in
 [LESSONS.md](LESSONS.md).
@@ -88,6 +95,7 @@ The reasoning, sources and open questions are in [DESIGN-organization-profile.md
 | `contract_scan.py` | Proposes contract entries from a folder of contract documents (never decides) |
 | `triage.py` | Sorts the open items of a filled register into parameter, document, configuration and not-checkable gaps (read-only) |
 | `poam.py` | Exports those open items as a draft OSCAL plan of action and milestones (JSON, validated against NIST's schema) |
+| `DESIGN-diagnosis-and-repair.md` | Design note: a catalog of commands in three risk tiers, how a diagnosis runs, where a person must approve |
 | `DESIGN-organization-profile.md` | Design note: size bands, FCI and CUI, export controls, how contracts choose the checklist |
 | `templates/NIST_800-171r3_Measurement_Register.xlsx` | **A blank Rev 3 measurement register** (see below) |
 | `objectives.md`, `kit-r3/` | The objective lists (NIST data, generated mechanically) |
@@ -169,6 +177,7 @@ Keep the folder outside `~/Desktop` and `~/Documents` (the sandbox blocks those)
   say "Not checkable".
 - The Rev 3 key is derived from Rev 2 determinations and is provisional by construction.
 - A full run takes many hours on a laptop-class machine.
+- The diagnosis and repair loop is a design with a first slice on one system; its model has not been scored, and nothing in it has been validated.
 
 ## Sources and license
 
