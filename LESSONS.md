@@ -67,3 +67,10 @@ What went wrong, what it cost, and the fix. Written for anyone repeating this ki
     checks went red together. Both traced to one planned maintenance window and cleared on the next scheduled run.
     Judge a monitor on whether it notices a gap and the jobs recover, and record the window as planned, not as an
     incident.
+28. **Seeing a failure is not the same as acting on it, and a diagnosis design must say which commands the AI may run.**
+    A status page that shows failing checks and records "seen" leaves the next steps (gather facts, diagnose, fix)
+    to memory. The first draft of the follow-on design only read facts and never answered the real question: may
+    the model run commands? The answer that held up is a catalog the model can only choose from, with three risk
+    tiers (read-only runs on its own, safe tests and anything that could damage the system or change a file
+    irreversibly wait for a person), a tier that the catalog sets and the model never does, and approval that is
+    withdrawn when the catalog is edited. See `DESIGN-diagnosis-and-repair.md`.
